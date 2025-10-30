@@ -1,140 +1,73 @@
-## Next.js Template
+# Welcome to your Lovable project
 
-### Tech stack
-- **Runtime**: Bun (scripts, tooling)
-- **Framework**: Next.js 15 (App Router, Turbopack)
-- **Language**: TypeScript
-- **UI**: Tailwind CSS v4
-- **Icons**: lucide-react
-- **Quality**: Biome (lint & format)
-- **Containerization**: Docker (Next.js standalone, Bun runtime)
+## Project info
 
-### Project structure
-```
-.
-├─ src/
-│  ├─ app/                # App Router (layouts, pages, styles)
-│  │  ├─ globals.css      # Tailwind v4 + theme tokens
-│  │  ├─ layout.tsx       # Root layout
-│  │  └─ page.tsx         # Example landing page
-│  └─ lib/
-│     └─ utils.ts         # Shared utilities (e.g., cn)
-├─ public/                # Static assets served as-is
-│  ├─ next-white.svg
-│  └─ ...
-├─ next.config.ts         # Next.js config (output: standalone)
-├─ .env.example           # Environment variables example
-├─ postcss.config.mjs     # Tailwind v4 via PostCSS
-├─ components.json        # UI components registry (shadcn config)
-├─ biome.json             # Biome config (lint/format)
-├─ tsconfig.json          # TypeScript config (alias `@` → `src`)
-├─ package.json           # Scripts and deps
-└─ Dockerfile             # Multi-stage build (Bun build → Bun runtime)
-```
+**URL**: https://lovable.dev/projects/6cd6f1dd-b637-4558-be90-18cc6487b0eb
 
-### Prerequisites
-- **Bun** installed (`bun --version`)
-- **Docker** (optional, for container builds)
+## How can I edit this code?
 
-### Getting started (local development)
-1) Create a new repository.
-2) Clone your new repository.
-3) Copy `.env.example` to `.env.local` (or `.env`) and fill in values.
-    - `NEXT_PUBLIC_API_URL` is the URL of the API.
-4) Install dependencies:
+There are several ways of editing your application.
+
+**Use Lovable**
+
+Simply visit the [Lovable Project](https://lovable.dev/projects/6cd6f1dd-b637-4558-be90-18cc6487b0eb) and start prompting.
+
+Changes made via Lovable will be committed automatically to this repo.
+
+**Use your preferred IDE**
+
+If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+
+The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+
+Follow these steps:
+
 ```sh
-bun install
-```
-5) Start the dev server (Turbopack):
-```sh
-bun run dev
-```
-6) Open `http://localhost:3000`.
-7) Edit `src/app/page.tsx` to try HMR.
+# Step 1: Clone the repository using the project's Git URL.
+git clone <YOUR_GIT_URL>
 
-### Environment variables
-Next.js loads env files automatically. Server-side variables are always available via `process.env`. To expose a variable to the browser, prefix it with `NEXT_PUBLIC_`.
+# Step 2: Navigate to the project directory.
+cd <YOUR_PROJECT_NAME>
 
-- Place env files at the project root: `.env.local`, `.env.development`, `.env.production`, etc.
-- Use `NEXT_PUBLIC_*` for variables needed on the client.
+# Step 3: Install the necessary dependencies.
+npm i
 
-Example `.env.local`:
-```env
-NEXT_PUBLIC_API_URL="http://localhost:3001"
+# Step 4: Start the development server with auto-reloading and an instant preview.
+npm run dev
 ```
 
-Use in server code (RSC/route handlers):
-```ts
-const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-```
+**Edit a file directly in GitHub**
 
-Use in client code (or shared code executed on the client):
-```ts
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-```
+- Navigate to the desired file(s).
+- Click the "Edit" button (pencil icon) at the top right of the file view.
+- Make your changes and commit the changes.
 
-### Scripts
-- **dev**: `next dev --turbopack`
-- **build**: `next build --turbopack`
-- **start**: `next start`
-- **lint**: `biome check`
-- **lint:fix**: `biome check --write`
-- **format**: `biome format --write`
+**Use GitHub Codespaces**
 
-Run examples:
-```sh
-bun run dev
-bun run build && bun run start
-bun run lint
-```
+- Navigate to the main page of your repository.
+- Click on the "Code" button (green button) near the top right.
+- Select the "Codespaces" tab.
+- Click on "New codespace" to launch a new Codespace environment.
+- Edit files directly within the Codespace and commit and push your changes once you're done.
 
-### Aliases
-TypeScript paths are configured for cleaner imports:
+## What technologies are used for this project?
 
-- **Alias**: `@` → `./src`
+This project is built with:
 
-Example:
-```ts
-import { cn } from "@/lib/utils";
-```
+- Vite
+- TypeScript
+- React
+- shadcn-ui
+- Tailwind CSS
 
-### Styling
-- Tailwind CSS v4 is preconfigured via `@import "tailwindcss"` in `src/app/globals.css`.
-- Light/dark design tokens are provided; apply `.dark` on `<html>` or any parent node to switch.
-- Includes `tw-animate-css` for simple animations.
+## How can I deploy this project?
 
-### Run with Docker
-This repo provides a multi-stage Dockerfile using Bun for both build and runtime, leveraging Next.js `output: "standalone"`.
+Simply open [Lovable](https://lovable.dev/projects/6cd6f1dd-b637-4558-be90-18cc6487b0eb) and click on Share -> Publish.
 
-Build the production image:
-```sh
-docker build -t virtual-lab-irk-fe .
-```
-Run the container:
-```sh
-docker run --rm -p 3000:3000 \
-  -e NODE_ENV=production \
-  -e NEXT_TELEMETRY_DISABLED=1 \
-  virtual-lab-irk-fe
-```
-Open `http://localhost:3000`.
+## Can I connect a custom domain to my Lovable project?
 
-Pass environment variables as needed (server-side only) using `-e` or an env file.
+Yes, you can!
 
-### Code quality
-Run Biome locally before commits:
-```sh
-bun run lint
-bun run format
-```
+To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
-### Deployment notes
-- Production build emits a standalone server in `.next/standalone` and static assets in `.next/static`.
-- Dockerfile copies `public/`, `.next/standalone`, and `.next/static`, then runs `server.js` with Bun in a minimal image.
-- Telemetry is disabled in the image via `NEXT_TELEMETRY_DISABLED=1`. Remove or change if you prefer.
-- If hosting behind a sub-path or CDN, configure `basePath`/`assetPrefix` in `next.config.ts` and ensure links and asset URLs respect them.
-
-### Troubleshooting
-- If native deps fail on Alpine (musl), add `libc6-compat` in the `deps` stage (see Dockerfile comment).
-- Tailwind not applying? Ensure classes are in files under `src/` and the dev server was restarted after dependency changes.
-- Type errors from path aliases? Verify `tsconfig.json` has `"@/*": ["./src/*"]` and the dev server was restarted.
+Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
