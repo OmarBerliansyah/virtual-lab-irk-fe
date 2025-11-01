@@ -2,15 +2,17 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Timeline from "./pages/Timeline";
 import VirtualLab from "./pages/VirtualLab";
 import AssistantDashboard from "./pages/AssistantDashboard";
-import WhiteboardPage from "./pages/WhiteboardPage";
 import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import SplashScreen from "./components/SplashScreen";
+import { useLocation } from "react-router-dom";
+import { useState } from "react";
 
 const queryClient = new QueryClient();
 
@@ -27,8 +29,6 @@ const AppContent = () => {
           <Route path="/timeline" element={<Timeline />} />
           <Route path="/virtual-lab" element={<VirtualLab />} />
           <Route path="/assistant" element={<AssistantDashboard />} />
-          <Route path="/whiteboard" element={<WhiteboardPage />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
@@ -37,7 +37,13 @@ const AppContent = () => {
   );
 };
 
-const App = () => (
+const App = () => {
+  const [showSplash, setShowSplash] = useState(true);
+
+  if (showSplash) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
+  return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -48,5 +54,5 @@ const App = () => (
     </TooltipProvider>
   </QueryClientProvider>
 );
-
+};
 export default App;
