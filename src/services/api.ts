@@ -1,5 +1,4 @@
-import type { 
-  HomeDataResponse, 
+import type {
   Event, 
   Task, 
   CreateTaskRequest, 
@@ -13,13 +12,6 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 
 // API service without authentication (public endpoints)
 export const publicApi = {
-  // Home page data
-  getHomeData: async (): Promise<HomeDataResponse> => {
-    const response = await fetch(`${API_BASE_URL}/api/home`);
-    if (!response.ok) throw new Error('Failed to fetch home data');
-    return response.json();
-  },
-
   // Events (public read)
   getEvents: async (course?: string): Promise<Event[]> => {
     const url = course 

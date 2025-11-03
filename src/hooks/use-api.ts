@@ -1,30 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@clerk/clerk-react';
-import { homeApi, eventsApi, tasksApi, Event, Task, HomeData } from '@/lib/api';
+import { eventsApi, tasksApi, Event, Task } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
-// Home API Hooks
-export const useHomeData = () => {
-  const { getToken } = useAuth();
-  
-  return useQuery({
-    queryKey: ['home'],
-    queryFn: async () => {
-      const token = await getToken();
-      return homeApi.getHomeData(token || undefined);
-    },
-  });
-};
 
 // Events API Hooks
 export const useEvents = (course?: string) => {
-  const { getToken } = useAuth();
   
   return useQuery({
     queryKey: ['events', course],
     queryFn: async () => {
-      const token = await getToken();
-      return eventsApi.getEvents(course, token || undefined);
+      return eventsApi.getEvents(course);
     },
   });
 };

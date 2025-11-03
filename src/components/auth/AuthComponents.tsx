@@ -1,6 +1,6 @@
-import { SignIn, SignUp, UserButton, useUser } from '@clerk/clerk-react';
+import { SignedOut, SignedIn, SignIn, SignUp, UserButton, useUser } from '@clerk/clerk-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useState } from 'react';
 
 interface AuthWrapperProps {
@@ -86,20 +86,57 @@ export function AuthWrapper({ children, requireRole }: AuthWrapperProps) {
 }
 
 export function AuthUserButton() {
-  const { isSignedIn } = useUser();
-  
-  if (!isSignedIn) {
-    return null;
-  }
+  const [authMode, setAuthMode] = useState<'sign-in' | 'sign-up'>('sign-in');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const openModal = (mode: 'sign-in' | 'sign-up') => {
+    setAuthMode(mode);
+    setIsModalOpen(true);
+  };
 
   return (
-    <UserButton 
-      appearance={{
-        elements: {
-          avatarBox: "h-8 w-8"
-        }
-      }}
-      showName
-    />
+    <>
+      <SignedOut>
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <div className="flex gap-2">
+            <DialogTrigger asChild>
+              <Button variant="outline" onClick={() => openModal('sign-in')}>
+                Sign In
+              </Button>
+            </DialogTrigger>
+            <DialogTrigger asChild>
+              <Button onClick={() => openModal('sign-up')}>
+                Sign Up
+              </Button>
+            </DialogTrigger>
+          </div>
+
+          <DialogContent className="sm:max-w-md">
+            <DialogTitle className="sr-only">
+              {authMode === 'sign-in' ? 'Sign In' : 'Sign Up'}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {authMode === 'sign-in' ? 'Sign in to your account' : 'Create a new account'}
+            </DialogDescription>
+            {authMode === 'sign-in' ? (
+              <SignIn 
+                appearance={{ elements: { card: "shadow-none border-none" } }}
+              />
+            ) : (
+              <SignUp 
+                appearance={{ elements: { card: "shadow-none border-none" } }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+      </SignedOut>
+
+      <SignedIn>
+        <UserButton 
+          appearance={{ elements: { avatarBox: "h-8 w-8" } }}
+          showName
+        />
+      </SignedIn>
+    </>
   );
 }

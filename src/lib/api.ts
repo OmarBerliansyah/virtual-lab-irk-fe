@@ -96,26 +96,6 @@ export interface Task {
   updatedAt: string;
 }
 
-export interface Course {
-  _id: string;
-  code: string;
-  name: string;
-  description?: string;
-  credits: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Highlight {
-  _id: string;
-  title: string;
-  description: string;
-  date: string;
-  image?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface Assistant {
   _id: string;
   name: string;
@@ -126,17 +106,7 @@ export interface Assistant {
   updatedAt: string;
 }
 
-export interface HomeData {
-  courses: Course[];
-  highlights: Highlight[];
-  assistants: Assistant[];
-}
-
 // API Services
-export const homeApi = {
-  getHomeData: (token?: string): Promise<HomeData> => ApiClient.get('/api/home', token),
-};
-
 export const eventsApi = {
   getEvents: (course?: string, token?: string): Promise<Event[]> => 
     ApiClient.get(`/api/events${course ? `?course=${course}` : ''}`, token),

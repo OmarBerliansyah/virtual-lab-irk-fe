@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useCallback, MouseEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
@@ -28,7 +27,6 @@ import {
   Info,
   Circle,
   Move,
-  Minus,
   MousePointer,
   Edit,
   Trash2,
@@ -112,7 +110,17 @@ const PathfindingSimulation = () => {
   
   // Canvas responsive state
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 500 });
-  
+
+  const [interaction, setInteraction] = useState({
+    state: "idle", // 'idle', 'dragging', 'marquee'
+    dragStart: { x: 0, y: 0 },
+    dragOffset: { x: 0, y: 0 },
+    clickedNodeId: null as number | null,
+    isClick: true, // Differentiates click from drag
+  });
+
+  const [marquee, setMarquee] = useState<{x1: number, y1: number, x2: number, y2: number} | null>(null);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animFrameRef = useRef<number | null>(null);
@@ -240,21 +248,138 @@ const PathfindingSimulation = () => {
       ctx.textBaseline = "middle";
       ctx.fillText((node.label || node.id.toString()), node.x, node.y);
     });
-  }, [nodes, edges, startNode, endNode, currentStep, selectedEdges, selectedNodes]);
+
+    if (marquee) {
+      ctx.strokeStyle = "rgba(0, 120, 255, 0.7)";
+      ctx.fillStyle = "rgba(0, 120, 255, 0.2)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.rect(marquee.x1, marquee.y1, marquee.x2 - marquee.x1, marquee.y2 - marquee.y1);
+      ctx.stroke();
+      ctx.fill();
+    }
+  }, [nodes, edges, startNode, endNode, currentStep, selectedEdges, selectedNodes, marquee]);
 
   // Effect to draw on state change
   useEffect(() => {
     draw();
-  }, [nodes, edges, startNode, endNode, currentStep, draw]);
+  }, [nodes, edges, startNode, endNode, currentStep, marquee, draw]);
+
+  const getCanvasCoords = (e: MouseEvent): { x: number, y: number } => {
+    if (!canvasRef.current) return { x: 0, y: 0 };
+    const rect = canvasRef.current.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+  };
+
+  const handleMouseDown = (e: MouseEvent<HTMLCanvasElement>) => {
+    if (isVisualizing) return;
+    
+    const { x, y } = getCanvasCoords(e);
+    const clickedNode = getNearestNode(x, y, nodes);
+
+    setInteraction({
+      ...interaction,
+      state: "dragging",
+      dragStart: { x, y },
+      clickedNodeId: clickedNode ? clickedNode.id : null,
+      isClick: true, // Assume it's a click until proven otherwise by mouseMove
+    });
+
+    if (mode === 'select') {
+      if (clickedNode && selectedNodes.has(clickedNode.id)) {
+        // Setup for dragging multiple nodes
+        setInteraction(prev => ({ ...prev, state: 'draggingNode' }));
+      } else if (!clickedNode) {
+        // Setup for marquee selection
+        setInteraction(prev => ({ ...prev, state: 'marquee' }));
+        setMarquee({ x1: x, y1: y, x2: x, y2: y });
+      }
+    }
+  };
+
+  const handleMouseMove = (e: MouseEvent<HTMLCanvasElement>) => {
+    if (interaction.state === "idle" || isVisualizing) return;
+
+    const { x, y } = getCanvasCoords(e);
+    
+    // If mouse moved more than a few pixels, it's a drag, not a click
+    if (Math.abs(x - interaction.dragStart.x) > 5 || Math.abs(y - interaction.dragStart.y) > 5) {
+      setInteraction(prev => ({ ...prev, isClick: false }));
+    }
+
+    if (interaction.state === 'draggingNode' && selectedNodes.size > 0) {
+      // Drag all selected nodes
+      const dx = x - interaction.dragStart.x;
+      const dy = y - interaction.dragStart.y;
+
+      setNodes(nodes.map(n => {
+        if (selectedNodes.has(n.id)) {
+          // This logic is tricky. Let's recalculate based on offset from first click.
+          // A better way: store offsets for ALL selected nodes on mouseDown.
+          // Simple way: just move them all by the same delta.
+          return { ...n, x: n.x + dx, y: n.y + dy };
+        }
+        return n;
+      }));
+      // Reset dragStart to current pos to calculate delta for *next* move event
+      setInteraction(prev => ({ ...prev, dragStart: { x, y } }));
+      
+    } else if (interaction.state === 'marquee') {
+      // Update marquee rectangle
+      setMarquee({ ...marquee!, x2: x, y2: y });
+    }
+  };
+
+  const handleMouseUp = (e: MouseEvent<HTMLCanvasElement>) => {
+    if (isVisualizing) return;
+
+    const { x, y } = getCanvasCoords(e);
+    
+    if (interaction.state === 'marquee') {
+      // Marquee selection finished
+      const newSelectedNodes = new Set<number>();
+      const newSelectedEdges = new Set<string>();
+      
+      const xMin = Math.min(marquee!.x1, marquee!.x2);
+      const xMax = Math.max(marquee!.x1, marquee!.x2);
+      const yMin = Math.min(marquee!.y1, marquee!.y2);
+      const yMax = Math.max(marquee!.y1, marquee!.y2);
+
+      nodes.forEach(n => {
+        if (n.x >= xMin && n.x <= xMax && n.y >= yMin && n.y <= yMax) {
+          newSelectedNodes.add(n.id);
+        }
+      });
+      
+      edges.forEach(edge => {
+        const from = nodes.find(n => n.id === edge.from);
+        const to = nodes.find(n => n.id === edge.to);
+        if (from && to &&
+            from.x >= xMin && from.x <= xMax && from.y >= yMin && from.y <= yMax &&
+            to.x >= xMin && to.x <= xMax && to.y >= yMin && to.y <= yMax) {
+          newSelectedEdges.add(edge.id);
+        }
+      });
+      
+      setSelectedNodes(newSelectedNodes);
+      setSelectedEdges(newSelectedEdges);
+      
+    } else if (interaction.isClick) {
+      // --- This is a CLICK action ---
+      // We run the logic from the old handleCanvasClick function
+      handleCanvasClick(x, y, e);
+    }
+    
+    // Reset interaction state
+    setInteraction({ state: "idle", dragStart: { x: 0, y: 0 }, dragOffset: { x: 0, y: 0 }, clickedNodeId: null, isClick: true });
+    setMarquee(null);
+  };
 
   // --- Canvas Click Logic ---
-  const handleCanvasClick = (e: MouseEvent<HTMLCanvasElement>) => {
-    if (isVisualizing || !canvasRef.current) return;
-    
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
+  const handleCanvasClick = (x: number, y: number, e: MouseEvent) => {
     const clickedNode = getNearestNode(x, y, nodes);
 
     switch (mode) {
@@ -265,6 +390,7 @@ const PathfindingSimulation = () => {
         }
         break;
       
+      // ... (case "addEdge", "setStart", "setEnd" are fine) ...
       case "addEdge":
         if (clickedNode) {
           if (addEdgeStart === null) {
@@ -561,7 +687,7 @@ const PathfindingSimulation = () => {
           break;
         }
         
-        adj.get(current)?.reverse().forEach(neighbor => { // reverse to explore in typical order
+        [...(adj.get(current) || [])].reverse().forEach(neighbor => { 
           if (!visited.includes(neighbor.to)) {
             parent.set(neighbor.to, current);
             s.push(neighbor.to);
@@ -743,7 +869,9 @@ const PathfindingSimulation = () => {
               ref={canvasRef}
               width={canvasSize.width}
               height={canvasSize.height}
-              onClick={handleCanvasClick}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
               className="w-full cursor-crosshair"
               style={{ display: 'block' }}
             />

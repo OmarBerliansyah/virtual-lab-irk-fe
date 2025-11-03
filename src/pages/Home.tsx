@@ -3,14 +3,27 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, BookOpen, Users, Award, Newspaper, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useHomeData } from "@/hooks/use-api";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useState } from "react";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription, 
+  DialogTrigger 
+} from "@/components/ui/dialog";
+
+interface Highlight {
+  type: string;
+  title: string;
+  description: string;
+  image: string;
+  date: string;
+}
 
 const Home = () => {
-  const { data: homeData, isLoading, error } = useHomeData();
-
-  // Fallback data while loading or if API fails
-  const fallbackCourses = [
+  //  data while loading or if API fails
+  const Courses = [
     { code: "IF1220", name: "Matematika Diskrit" },
     { code: "IF2120", name: "Probabilitas dan Statistik" },
     { code: "IF2123", name: "Aljabar Linear dan Geometri" },
@@ -18,7 +31,7 @@ const Home = () => {
     { code: "IF2224", name: "Teori Bahasa Formal dan Otomata" },
   ];
 
-  const fallbackHighlights = [
+  const Highlights = [
     {
       type: "tasks",
       title: "Tugas Akhir Semester",
@@ -42,7 +55,7 @@ const Home = () => {
     },
   ];
 
-  const fallbackAssistants = [
+  const Assistants = [
     {
       name: "Ahmad Naufal (IF'22)",
       role: "Head Assistant",
@@ -105,28 +118,14 @@ const Home = () => {
     },
   ];
 
-  const courses = homeData?.courses || fallbackCourses;
-  const highlights = homeData?.highlights || fallbackHighlights;
-  const assistants = homeData?.assistants || fallbackAssistants;
+  const [selectedHighlight, setSelectedHighlight] = useState<Highlight | null>(null);
+
+  const courses = Courses;
+  const highlights = Highlights;
+  const assistants = Assistants;
 
   return (
     <div className="flex flex-col min-h-screen">
-      {isLoading && (
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading data...</span>
-        </div>
-      )}
-
-      {/* Error State */}
-      {error && (
-        <Alert className="mx-4 mt-4">
-          <AlertDescription>
-            Failed to load data. Showing fallback content.
-          </AlertDescription>
-        </Alert>
-      )}
-
       {/* Hero Section */}
       <section className="relative gradient-hero text-white py-20 md:py-32 overflow-hidden">
         <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:20px_20px]" />
@@ -220,45 +219,79 @@ const Home = () => {
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-primary">
               Latest Highlights
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {highlights.map((item, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                >
-                  <Card className="overflow-hidden card-elevated h-full flex flex-col">
-                    <div className="relative h-48 overflow-hidden">
-                      <img
-                        src={item.image}
-                        alt={item.title}
-                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                      />
-                      <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
-                        <Newspaper className="inline h-3 w-3 mr-1" />
-                        NEWS
+
+            <Dialog open={!!selectedHighlight} onOpenChange={(isOpen) => !isOpen && setSelectedHighlight(null)}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {highlights.map((item, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                  >
+                    <Card className="overflow-hidden card-elevated h-full flex flex-col">
+                      <div className="relative h-48 overflow-hidden">
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                        />
+                        <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+                          <Newspaper className="inline h-3 w-3 mr-1" />
+                          NEWS
+                        </div>
                       </div>
-                    </div>
-                    <div className="p-6 flex-1 flex flex-col">
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {new Date(item.date).toLocaleDateString('id-ID', {
+                      <div className="p-6 flex-1 flex flex-col">
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {new Date(item.date).toLocaleDateString('id-ID', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </p>
+                        <h3 className="text-xl font-semibold mb-3">{item.title}</h3>
+                        <p className="text-muted-foreground flex-1">{item.description}</p>
+                        <DialogTrigger asChild>
+                          <Button 
+                            variant="link" 
+                            className="mt-4 p-0 h-auto self-start"
+                            onClick={() => setSelectedHighlight(item)}
+                          >
+                            Read more <ArrowRight className="ml-1 h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                      </div>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+
+              <DialogContent className="sm:max-w-lg">
+                {selectedHighlight && (
+                  <>
+                    <img
+                      src={selectedHighlight.image}
+                      alt={selectedHighlight.title}
+                      className="w-full h-48 object-cover rounded-t-lg"
+                    />
+                    <DialogHeader className="pt-4">
+                      <DialogTitle>{selectedHighlight.title}</DialogTitle>
+                      <DialogDescription>
+                        {new Date(selectedHighlight.date).toLocaleDateString('id-ID', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric'
                         })}
-                      </p>
-                      <h3 className="text-xl font-semibold mb-3">{item.title}</h3>
-                      <p className="text-muted-foreground flex-1">{item.description}</p>
-                      <Button variant="link" className="mt-4 p-0 h-auto">
-                        Read more <ArrowRight className="ml-1 h-4 w-4" />
-                      </Button>
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 text-sm text-muted-foreground">
+                      {selectedHighlight.description}
                     </div>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
+                  </>
+                )}
+              </DialogContent>
+            </Dialog>
           </motion.div>
         </div>
       </section>

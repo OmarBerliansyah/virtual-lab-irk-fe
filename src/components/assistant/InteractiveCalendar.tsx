@@ -10,18 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { Calendar as Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -105,32 +95,6 @@ const InteractiveCalendar = () => {
     setIsModalOpen(true);
   };
 
-  // Submit event baru ke backend
-  const handleAddEvent = async () => {
-    if (!newEvent.title || !newEvent.start) {
-      toast({ variant: "destructive", title: "Missing fields", description: "Title and date are required." });
-      return;
-    }
-    
-    setIsSubmitting(true);
-    // TODO: Ganti ini dengan fetch API POST
-    // await fetch('/api/events', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(newEvent)
-    // });
-
-    // Mock API call
-    await new Promise(res => setTimeout(res, 500));
-    const newEventWithId = { ...newEvent, id: (Math.random() * 1000).toString() };
-    setAllEvents([...allEvents, newEventWithId]);
-    
-    setIsSubmitting(false);
-    setIsModalOpen(false);
-    setNewEvent({ title: "", start: "", course: "IF2120", type: "deadline" });
-    toast({ title: "Event Created", description: "New event added to the calendar." });
-  };
-
   return (
     <div className="space-y-6">
        <Card className="p-6">
@@ -186,61 +150,6 @@ const InteractiveCalendar = () => {
           <strong>Assistant Feature:</strong> Click on any date to add a new event (deadline, release, etc.) for students.
         </AlertDescription>
       </Alert>
-        
-      {/* Modal untuk menambah event baru */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Calendar Event</DialogTitle>
-            <DialogDescription>
-              This event will be visible to all students.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="title" className="text-right">Title</Label>
-              <Input id="title" value={newEvent.title} onChange={(e) => setNewEvent({...newEvent, title: e.target.value})} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="date" className="text-right">Date</Label>
-              <Input id="date" type="date" value={newEvent.start} onChange={(e) => setNewEvent({...newEvent, start: e.target.value})} className="col-span-3" />
-            </div>
-             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="course" className="text-right">Course</Label>
-              <Select value={newEvent.course} onValueChange={(val: string) => setNewEvent({...newEvent, course: val})}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses.filter(c => c.code !== 'all').map((course) => (
-                    <SelectItem key={course.code} value={course.code}>{course.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="type" className="text-right">Type</Label>
-              <Select value={newEvent.type} onValueChange={(val: string) => setNewEvent({...newEvent, type: val as "deadline" | "release" | "assessment"})}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                   <SelectItem value="deadline">Deadline</SelectItem>
-                   <SelectItem value="release">Release</SelectItem>
-                   <SelectItem value="assessment">Assessment</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>Cancel</Button>
-            <Button onClick={handleAddEvent} disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Event
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       
       {/* Diperlukan untuk gaya kalender kustom */}
       <style>{`

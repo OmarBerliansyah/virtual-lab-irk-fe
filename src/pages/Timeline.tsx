@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { useUser, useAuth } from "@clerk/clerk-react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
-import interactionPlugin from "@fullcalendar/interaction";
+import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
 import { Card } from "@/components/ui/card";
 import {
   Select,
@@ -11,8 +12,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar as CalendarIcon, Loader2 } from "lucide-react";
-import { useEvents } from "@/hooks/use-api";
+import { useEvents, useCreateEvent } from "@/hooks/use-api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
 
 interface CourseEvent {
   id: string;
@@ -25,12 +38,33 @@ interface CourseEvent {
 }
 
 const Timeline = () => {
+  const { isSignedIn, user } = useUser();
+  const isAssistant = user?.publicMetadata?.role === 'assistant';
+  const { toast } = useToast();
+
   const [selectedCourse, setSelectedCourse] = useState<string>("all");
   
-  // Fetch events from API
+  // HANYA fetch jika user login
   const { data: apiEvents, isLoading, error } = useEvents(
     selectedCourse === "all" ? undefined : selectedCourse
   );
+
+  // State untuk modal (pindahkan dari InteractiveCalendar)
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newEvent, setNewEvent] = useState<{
+    title: string;
+    start: string;
+    course: string;
+    type: "deadline" | "release" | "assessment";
+  }>({ 
+    title: "", 
+    start: "", 
+    course: "IF2120", 
+    type: "deadline"
+  });
+
+  const createEventMutation = useCreateEvent();
 
   const courses = [
     { code: "all", name: "All Courses" },
@@ -101,8 +135,8 @@ const Timeline = () => {
     },
   ];
 
-  // Convert API events to calendar format
-  const allEvents: CourseEvent[] = apiEvents 
+  // Tampilkan event HANYA jika login dan datanya ada
+  const allEvents: CourseEvent[] = (apiEvents && !error) 
     ? apiEvents.map(event => ({
         id: event._id,
         title: event.title,
@@ -135,6 +169,51 @@ const Timeline = () => {
         borderColor: colors.border,
       };
     });
+
+  const handleDateClick = (clickInfo: DateClickArg) => {
+    if (!isAssistant) return;
+
+    setNewEvent({ ...newEvent, start: clickInfo.dateStr });
+    setIsModalOpen(true);
+  }
+
+  // Fungsi submit (menggunakan API)
+  const handleAddEvent = async () => {
+    if (!newEvent.title || !newEvent.start) {
+      toast({ 
+        variant: "destructive", 
+        title: "Missing fields", 
+        description: "Title and date are required." 
+      });
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      await createEventMutation.mutateAsync({
+        title: newEvent.title,
+        start: newEvent.start,
+        course: newEvent.course,
+        type: newEvent.type,
+      });
+      
+      setIsModalOpen(false);
+      setNewEvent({ title: "", start: "", course: "IF2120", type: "deadline" });
+      toast({ 
+        title: "Event Created", 
+        description: "New event added to the calendar." 
+      });
+    } catch (error) {
+      toast({ 
+        variant: "destructive", 
+        title: "Error", 
+        description: "Failed to create event. Please try again." 
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen py-12">
@@ -215,13 +294,106 @@ const Timeline = () => {
                 eventClick={(info) => {
                   alert(`Event: ${info.event.title}\nCourse: ${info.event.extendedProps.course}`);
                 }}
+                dateClick={isAssistant ? handleDateClick : undefined}
+                selectable={isAssistant}
               />
             </div>
           </Card>
 
           <div className="text-sm text-muted-foreground text-center">
             <p>Click on any event to view more details</p>
+            {isAssistant && <p>Click on any date to add a new event</p>}
           </div>
+
+          {isAssistant && (
+            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Calendar Event</DialogTitle>
+                  <DialogDescription>
+                    This event will be visible to all students.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="title" className="text-right">Title</Label>
+                    <Input 
+                      id="title" 
+                      value={newEvent.title} 
+                      onChange={(e) => setNewEvent({...newEvent, title: e.target.value})} 
+                      className="col-span-3" 
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="date" className="text-right">Date</Label>
+                    <Input 
+                      id="date" 
+                      type="date" 
+                      value={newEvent.start} 
+                      onChange={(e) => setNewEvent({...newEvent, start: e.target.value})} 
+                      className="col-span-3" 
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="course" className="text-right">Course</Label>
+                    <Select 
+                      value={newEvent.course} 
+                      onValueChange={(val: string) => setNewEvent({...newEvent, course: val})}
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {courses.filter(c => c.code !== 'all').map((course) => (
+                          <SelectItem key={course.code} value={course.code}>
+                            {course.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="type" className="text-right">Type</Label>
+                    <Select 
+                      value={newEvent.type} 
+                      onValueChange={(val) => setNewEvent({...newEvent, type: val as "deadline" | "release" | "assessment"})}
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="deadline">Deadline</SelectItem>
+                        <SelectItem value="release">Release</SelectItem>
+                        <SelectItem value="assessment">Assessment</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsModalOpen(false)} 
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={handleAddEvent} disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save Event
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {/* Tampilkan pesan jika tidak login */}
+          {!isSignedIn && (
+            <Alert className="mt-6">
+              <AlertDescription>
+                Please <b>sign in</b> to view the complete academic calendar with your personalized events.
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       </div>
 
