@@ -1,11 +1,16 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, BookOpen, Users, Award, Newspaper } from "lucide-react";
+import { ArrowRight, BookOpen, Users, Award, Newspaper, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useHomeData } from "@/hooks/use-api";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Home = () => {
-  const courses = [
+  const { data: homeData, isLoading, error } = useHomeData();
+
+  // Fallback data while loading or if API fails
+  const fallbackCourses = [
     { code: "IF1220", name: "Matematika Diskrit" },
     { code: "IF2120", name: "Probabilitas dan Statistik" },
     { code: "IF2123", name: "Aljabar Linear dan Geometri" },
@@ -13,7 +18,7 @@ const Home = () => {
     { code: "IF2224", name: "Teori Bahasa Formal dan Otomata" },
   ];
 
-  const highlights = [
+  const fallbackHighlights = [
     {
       type: "tasks",
       title: "Tugas Akhir Semester",
@@ -37,7 +42,7 @@ const Home = () => {
     },
   ];
 
-  const assistants = [
+  const fallbackAssistants = [
     {
       name: "Ahmad Naufal (IF'22)",
       role: "Head Assistant",
@@ -45,7 +50,7 @@ const Home = () => {
     },
     {
       name: "Ikhwan Al Hakim (IF'22)",
-      role: "Research Assistant",
+      role: "Research Assistant", 
       image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80",
     },
     {
@@ -100,8 +105,28 @@ const Home = () => {
     },
   ];
 
+  const courses = homeData?.courses || fallbackCourses;
+  const highlights = homeData?.highlights || fallbackHighlights;
+  const assistants = homeData?.assistants || fallbackAssistants;
+
   return (
     <div className="flex flex-col min-h-screen">
+      {isLoading && (
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Loading data...</span>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <Alert className="mx-4 mt-4">
+          <AlertDescription>
+            Failed to load data. Showing fallback content.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Hero Section */}
       <section className="relative gradient-hero text-white py-20 md:py-32 overflow-hidden">
         <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:20px_20px]" />
@@ -212,14 +237,18 @@ const Home = () => {
                         className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                       />
                       <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
-                        {item.type === "news" && <Newspaper className="inline h-3 w-3 mr-1" />}
-                        {item.type === "publication" && <Award className="inline h-3 w-3 mr-1" />}
-                        {item.type === "project" && <BookOpen className="inline h-3 w-3 mr-1" />}
-                        {item.type.toUpperCase()}
+                        <Newspaper className="inline h-3 w-3 mr-1" />
+                        NEWS
                       </div>
                     </div>
                     <div className="p-6 flex-1 flex flex-col">
-                      <p className="text-sm text-muted-foreground mb-2">{item.date}</p>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        {new Date(item.date).toLocaleDateString('id-ID', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </p>
                       <h3 className="text-xl font-semibold mb-3">{item.title}</h3>
                       <p className="text-muted-foreground flex-1">{item.description}</p>
                       <Button variant="link" className="mt-4 p-0 h-auto">

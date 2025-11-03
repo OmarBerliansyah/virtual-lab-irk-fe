@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import SplashScreen from "./components/SplashScreen";
+import { AuthWrapper } from "./components/auth/AuthComponents";
 import { useLocation } from "react-router-dom";
 import { useState } from "react";
 
@@ -21,19 +22,28 @@ const AppContent = () => {
   const isWhiteboardPage = location.pathname === '/whiteboard';
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {!isWhiteboardPage && <Navbar />}
-      <main className={isWhiteboardPage ? "h-screen" : "flex-1"}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/timeline" element={<Timeline />} />
-          <Route path="/virtual-lab" element={<VirtualLab />} />
-          <Route path="/assistant" element={<AssistantDashboard />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </main>
-      {!isWhiteboardPage && <Footer />}
-    </div>
+    <AuthWrapper>
+      <div className="flex flex-col min-h-screen">
+        {!isWhiteboardPage && <Navbar />}
+        <main className={isWhiteboardPage ? "h-screen" : "flex-1"}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/timeline" element={<Timeline />} />
+            <Route path="/virtual-lab" element={<VirtualLab />} />
+            <Route 
+              path="/assistant" 
+              element={
+                <AuthWrapper requireRole="assistant">
+                  <AssistantDashboard />
+                </AuthWrapper>
+              } 
+            />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </main>
+        {!isWhiteboardPage && <Footer />}
+      </div>
+    </AuthWrapper>
   );
 };
 

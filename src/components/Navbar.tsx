@@ -2,29 +2,37 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Beaker } from "lucide-react";
 import { useState } from "react";
+import { AuthUserButton } from "@/components/auth/AuthComponents";
+import { useUser } from "@clerk/clerk-react";
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { user } = useUser();
 
   const navItems = [
     { path: "/", label: "Home" },
     { path: "/timeline", label: "Timeline" },
     { path: "/virtual-lab", label: "Virtual Lab" },
     // { path: "/whiteboard", label: "Whiteboard" },
-    { path: "/assistant", label: "Assistant" },
+    { path: "/assistant", label: "Assistant", requireRole: 'assistant' },
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+  // Filter nav items based on user role
+  const filteredNavItems = navItems.filter(item => {
+    if (!item.requireRole) return true;
+    const userRole = user?.publicMetadata?.role as string;
+    return userRole === item.requireRole || userRole === 'admin';
+  });
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
-          <Link to="/" className="flex items-left space-x-2 group">
-            <span className="text-xl font-bold text-primary">LabIRK</span>
-          </Link>
-          <Link to="/" className="absolute left-1/2 transform -translate-x-1/2 flex items-center group">
+          {/* Logo on the left */}
+          <Link to="/" className="flex items-center space-x-2 group">
             <img
               src="/LabIRK.svg"
               alt="LabIRK Logo"
@@ -32,9 +40,9 @@ const Navbar = () => {
             />
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-1">
-            {navItems.map((item) => (
+          {/* Desktop Navigation - Centered */}
+          <div className="hidden md:flex items-center space-x-1 absolute left-1/2 transform -translate-x-1/2">
+            {filteredNavItems.map((item) => (
               <Link key={item.path} to={item.path}>
                 <Button
                   variant={isActive(item.path) ? "default" : "ghost"}
@@ -46,25 +54,30 @@ const Navbar = () => {
             ))}
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden p-2"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileMenuOpen ? (
-              <X className="h-6 w-6" />
-            ) : (
-              <Menu className="h-6 w-6" />
-            )}
-          </button>
+          {/* Right side - Auth + Mobile Menu */}
+          <div className="flex items-center space-x-2">
+            <AuthUserButton />
+            
+            {/* Mobile Menu Button */}
+            <button
+              className="md:hidden p-2"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t">
             <div className="flex flex-col space-y-2">
-              {navItems.map((item) => (
+              {filteredNavItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}

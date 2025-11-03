@@ -10,7 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { useEvents } from "@/hooks/use-api";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CourseEvent {
   id: string;
@@ -24,6 +26,11 @@ interface CourseEvent {
 
 const Timeline = () => {
   const [selectedCourse, setSelectedCourse] = useState<string>("all");
+  
+  // Fetch events from API
+  const { data: apiEvents, isLoading, error } = useEvents(
+    selectedCourse === "all" ? undefined : selectedCourse
+  );
 
   const courses = [
     { code: "all", name: "All Courses" },
@@ -34,8 +41,8 @@ const Timeline = () => {
     { code: "IF2224", name: "Teori Bahasa Formal dan Otomata" },
   ];
 
-  // Sample events data
-  const allEvents: CourseEvent[] = [
+  // Fallback events data
+  const fallbackEvents: CourseEvent[] = [
     {
       id: "1",
       title: "Assignment 1: Sorting Algorithms",
@@ -94,6 +101,17 @@ const Timeline = () => {
     },
   ];
 
+  // Convert API events to calendar format
+  const allEvents: CourseEvent[] = apiEvents 
+    ? apiEvents.map(event => ({
+        id: event._id,
+        title: event.title,
+        start: event.start,
+        course: event.course,
+        type: event.type,
+      }))
+    : fallbackEvents;
+
   const getEventColor = (type: string) => {
     switch (type) {
       case "deadline":
@@ -122,6 +140,23 @@ const Timeline = () => {
     <div className="min-h-screen py-12">
       <div className="container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex items-center justify-center min-h-[50vh]">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <span className="ml-2">Loading events...</span>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <Alert className="mb-6">
+              <AlertDescription>
+                Failed to load events from API. Showing fallback content.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="text-center mb-8">
             <CalendarIcon className="h-12 w-12 mx-auto mb-4 text-primary" />
             <h1 className="text-4xl font-bold mb-4 text-primary">Academic Calendar</h1>

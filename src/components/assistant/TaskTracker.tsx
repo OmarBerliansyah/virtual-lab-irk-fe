@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,14 +8,17 @@ import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Calendar, Clock, User, Trash2, Edit, Info } from "lucide-react";
+import { Plus, Calendar, Clock, User, Trash2, Edit, Info, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from "@/hooks/use-api";
+import { Task as ApiTask } from "@/lib/api";
 
 interface Task {
   id: string;
   title: string;
   description: string;
   priority: "low" | "medium" | "high";
+  status: "To Do" | "In Progress" | "Done";
   dueDate?: string;
   assignee?: string;
   tags: string[];
@@ -34,57 +37,85 @@ interface TaskBoardData {
   columnOrder: string[];
 }
 
-const initialData: TaskBoardData = {
-  tasks: {
-    "task-1": {
-      id: "task-1",
-      title: "Setup Project Structure",
-      description: "Initialize the project with proper folder structure and dependencies",
-      priority: "high",
-      dueDate: "2025-11-15",
-      assignee: "Assistant",
-      tags: ["setup", "backend"],
-      createdAt: "2025-11-01"
-    },
-    "task-2": {
-      id: "task-2",
-      title: "Implement Authentication",
-      description: "Add Clerk authentication with role-based access",
-      priority: "high",
-      tags: ["auth", "security"],
-      createdAt: "2025-11-01"
-    },
-    "task-3": {
-      id: "task-3",
-      title: "Design Database Schema",
-      description: "Create MongoDB schemas for users, tasks, and events",
-      priority: "medium",
-      tags: ["database", "mongodb"],
-      createdAt: "2025-11-01"
-    }
-  },
-  columns: {
-    "column-1": {
-      id: "column-1",
-      title: "To Do",
-      taskIds: ["task-1", "task-2"]
-    },
-    "column-2": {
-      id: "column-2",
-      title: "In Progress", 
-      taskIds: []
-    },
-    "column-3": {
-      id: "column-3",
-      title: "Done",
-      taskIds: ["task-3"]
-    }
-  },
-  columnOrder: ["column-1", "column-2", "column-3"]
-};
-
 const TaskTracker = () => {
-  const [data, setData] = useState<TaskBoardData>(initialData);
+  const { toast } = useToast();
+  const { data: apiTasks, isLoading, error } = useTasks();
+  const createTaskMutation = useCreateTask();
+  const updateTaskMutation = useUpdateTask();
+  const deleteTaskMutation = useDeleteTask();
+
+  // Convert API tasks to local format
+  const convertApiTaskToLocal = (apiTask: ApiTask): Task => ({
+    id: apiTask._id,
+    title: apiTask.title,
+    description: apiTask.description || "",
+    priority: apiTask.priority || "medium",
+    status: apiTask.status || "To Do",
+    dueDate: apiTask.dueDate,
+    assignee: apiTask.assignee,
+    tags: apiTask.tags || [],
+    createdAt: apiTask.createdAt,
+  });
+
+  // Initialize task board data from API
+  const initializeTaskBoard = (tasks: Task[]): TaskBoardData => {
+    const taskMap: { [key: string]: Task } = {};
+    const todoTasks: string[] = [];
+    const inProgressTasks: string[] = [];
+    const doneTasks: string[] = [];
+
+    tasks.forEach(task => {
+      taskMap[task.id] = task;
+      if (task.status === "To Do") todoTasks.push(task.id);
+      else if (task.status === "In Progress") inProgressTasks.push(task.id);
+      else if (task.status === "Done") doneTasks.push(task.id);
+    });
+
+    return {
+      tasks: taskMap,
+      columns: {
+        "column-1": { id: "column-1", title: "To Do", taskIds: todoTasks },
+        "column-2": { id: "column-2", title: "In Progress", taskIds: inProgressTasks },
+        "column-3": { id: "column-3", title: "Done", taskIds: doneTasks },
+      },
+      columnOrder: ["column-1", "column-2", "column-3"],
+    };
+  };
+
+  // Fallback data for when API is loading/failed
+  const fallbackData: TaskBoardData = {
+    tasks: {
+      "task-1": {
+        id: "task-1",
+        title: "Setup Project Structure",
+        description: "Initialize the project with proper folder structure and dependencies",
+        priority: "high",
+        status: "To Do",
+        dueDate: "2025-11-15",
+        assignee: "Assistant",
+        tags: ["setup", "backend"],
+        createdAt: "2025-11-01"
+      },
+    },
+    columns: {
+      "column-1": { id: "column-1", title: "To Do", taskIds: ["task-1"] },
+      "column-2": { id: "column-2", title: "In Progress", taskIds: [] },
+      "column-3": { id: "column-3", title: "Done", taskIds: [] },
+    },
+    columnOrder: ["column-1", "column-2", "column-3"],
+  };
+
+  const [data, setData] = useState<TaskBoardData>(fallbackData);
+
+  // Update local state when API data changes
+  useEffect(() => {
+    if (apiTasks) {
+      const localTasks = apiTasks.map(convertApiTaskToLocal);
+      const newData = initializeTaskBoard(localTasks);
+      setData(newData);
+    }
+  }, [apiTasks]);
+
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [newTask, setNewTask] = useState<Partial<Task>>({
@@ -95,7 +126,6 @@ const TaskTracker = () => {
     assignee: "",
     tags: []
   });
-  const { toast } = useToast();
 
   const onDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
@@ -180,11 +210,23 @@ const TaskTracker = () => {
       title: newTask.title,
       description: newTask.description || "",
       priority: newTask.priority as "low" | "medium" | "high",
+      status: "To Do",
       dueDate: newTask.dueDate,
       assignee: newTask.assignee,
       tags: newTask.tags || [],
       createdAt: new Date().toISOString().split('T')[0]
     };
+
+    // Create task via API
+    createTaskMutation.mutate({
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
+      status: task.status,
+      dueDate: task.dueDate,
+      assignee: task.assignee,
+      tags: task.tags,
+    });
 
     const newTasks = {
       ...data.tasks,
@@ -222,7 +264,10 @@ const TaskTracker = () => {
     });
   };
 
-  const deleteTask = (taskId: string) => {
+  const handleDeleteTask = (taskId: string) => {
+    // Delete task via API
+    deleteTaskMutation.mutate(taskId);
+
     const newTasks = { ...data.tasks };
     delete newTasks[taskId];
 
@@ -257,6 +302,23 @@ const TaskTracker = () => {
 
   return (
     <div className="space-y-6">
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Loading tasks...</span>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <Alert>
+          <AlertDescription>
+            Failed to load tasks from API. Showing fallback content.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">Task Tracker</h2>
@@ -396,7 +458,7 @@ const TaskTracker = () => {
                                         className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          deleteTask(task.id);
+                                          handleDeleteTask(task.id);
                                         }}
                                       >
                                         <Trash2 className="h-3 w-3" />
