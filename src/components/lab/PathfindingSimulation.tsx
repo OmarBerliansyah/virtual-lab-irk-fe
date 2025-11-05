@@ -674,6 +674,9 @@ const PathfindingSimulation = () => {
       const visited: number[] = [];
       const parent = new Map<number, number | null>();
       
+      // Initialize start node's parent
+      parent.set(startNode, null);
+      
       let found = false;
       while (s.length > 0) {
         const current = s.pop()!;
@@ -689,7 +692,7 @@ const PathfindingSimulation = () => {
         
         [...(adj.get(current) || [])].reverse().forEach(neighbor => { 
           if (!visited.includes(neighbor.to)) {
-            parent.set(neighbor.to, current);
+            parent.set(neighbor.to, current); // Set parent before pushing to stack
             s.push(neighbor.to);
           }
         });
@@ -697,9 +700,9 @@ const PathfindingSimulation = () => {
       
       if (found) {
         let at = endNode;
-        while(at !== null) {
+        while(at !== null && parent.has(at)) { // Add parent.has() check
           finalPath.unshift(at);
-          at = parent.get(at)!;
+          at = parent.get(at) ?? null; // Use nullish coalescing
         }
       }
     }
