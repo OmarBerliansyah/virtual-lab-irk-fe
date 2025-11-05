@@ -12,15 +12,20 @@ import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import SplashScreen from "./components/SplashScreen";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthWrapper } from "./components/auth/AuthComponents";
 import { useState } from "react";
 import { SignedIn, SignIn, SignUp } from "@clerk/clerk-react";
+import { useGlobalErrorHandler } from "./hooks/use-global-error-handler";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
   const location = useLocation();
   const isWhiteboardPage = location.pathname === '/whiteboard';
+  
+  // Initialize global error handler
+  useGlobalErrorHandler();
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -76,13 +81,15 @@ const App = () => {
     return <SplashScreen onFinish={() => setShowSplash(false)} />;
   }
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <AppContent />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <AppContent />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 };
 

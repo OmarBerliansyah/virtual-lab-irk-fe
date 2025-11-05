@@ -36,6 +36,7 @@ export const useCreateEvent = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
+        duration: 20000,
       });
     },
   });
@@ -63,6 +64,7 @@ export const useUpdateEvent = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
+        duration: 20000, 
       });
     },
   });
@@ -90,6 +92,7 @@ export const useDeleteEvent = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
+        duration: 20000, 
       });
     },
   });
@@ -130,6 +133,7 @@ export const useCreateTask = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
+        duration: 20000, 
       });
     },
   });
@@ -157,6 +161,7 @@ export const useUpdateTask = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
+        duration: 20000, 
       });
     },
   });
@@ -184,6 +189,7 @@ export const useDeleteTask = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
+        duration: 20000, 
       });
     },
   });
@@ -235,6 +241,7 @@ export const useCreateUserById = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
+        duration: 20000, 
       });
     },
   });
@@ -262,6 +269,7 @@ export const useUpdateUserById = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
+        duration: 20000, 
       });
     },
   });
@@ -289,6 +297,7 @@ export const useUpdateUser = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
+        duration: 20000, 
       });
     }
   });
@@ -316,6 +325,7 @@ export const useDeleteUser = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
+        duration: 20000, 
       });
     },
   });

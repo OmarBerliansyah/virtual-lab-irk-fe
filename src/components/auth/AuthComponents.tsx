@@ -1,7 +1,8 @@
 import { SignedOut, SignedIn, SignIn, SignUp, UserButton, useUser } from '@clerk/clerk-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useToast } from '@/components/ui/use-toast';
 
 interface AuthWrapperProps {
   children: React.ReactNode;
@@ -12,6 +13,33 @@ export function AuthWrapper({ children, requireRole }: AuthWrapperProps) {
   const { isSignedIn, user } = useUser();
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<'sign-in' | 'sign-up'>('sign-in');
+  const { toast } = useToast();
+
+  // Check for access denied and show toast
+  useEffect(() => {
+    if (requireRole && isSignedIn && user) {
+      const userRole = user?.publicMetadata?.role as string;
+      if (userRole !== requireRole && userRole !== 'admin') {
+        toast({
+          title: "Akses Ditolak",
+          description: `Anda memerlukan izin ${requireRole} untuk mengakses area ini. Role saat ini: ${userRole || 'user'}`,
+          variant: "destructive",
+          duration: 20000, 
+        });
+      }
+    }
+  }, [requireRole, isSignedIn, user, toast]);
+
+  // Show login success toast
+  useEffect(() => {
+    if (isSignedIn && user) {
+      toast({
+        title: "Login Berhasil",
+        description: `Selamat datang, ${user.emailAddresses[0]?.emailAddress || 'User'}!`,
+        duration: 20000, 
+      });
+    }
+  }, [isSignedIn, user, toast]);
 
   if (!isSignedIn) {
     return (

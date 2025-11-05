@@ -92,6 +92,7 @@ const EditUserDialog = ({ user }: { user: UserType }) => {
             variant: "destructive",
             title: "Error",
             description: `Failed to update user: ${err.message}`,
+            duration: 20000,
           });
         },
       },
@@ -172,6 +173,7 @@ const DeleteUserAlert = ({ userId }: { userId: string }) => {
           variant: "destructive",
           title: "Error",
           description: `Failed to delete user: ${err.message}`,
+          duration: 20000, 
         });
       },
     });
