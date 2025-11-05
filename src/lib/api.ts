@@ -1,3 +1,5 @@
+import { get } from 'http';
+
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -106,6 +108,15 @@ export interface Assistant {
   updatedAt: string;
 }
 
+export interface User {
+  _id: string;
+  clerkId: string;
+  email: string;
+  role: 'user' | 'assistant' | 'admin';
+  createdAt: string;
+  updatedAt: string;
+}
+
 // API Services
 export const eventsApi = {
   getEvents: (course?: string, token?: string): Promise<Event[]> => 
@@ -127,5 +138,14 @@ export const tasksApi = {
   deleteTask: (id: string, token?: string): Promise<void> =>
     ApiClient.delete(`/api/tasks/${id}`, token),
 };
+
+export const adminApi = {
+  getAllUsers: (token?: string): Promise<User[]> => ApiClient.get('/api/admin/users', token),
+  getUserById: (id: string, token?: string): Promise<User> => ApiClient.get(`/api/admin/users/${id}`, token),
+  updateUserById: (id: string, token?: string): Promise<User> => ApiClient.get(`/api/admin/update/${id}/role`, token),
+  createUserById: (id: string, role: string, token?: string): Promise<User> => ApiClient.post(`/api/admin/create/${id}/role`, { role }, token),
+  updateUser: (id: string, data: Partial<User>, token?: string): Promise<User> => ApiClient.put(`/api/admin/users/${id}`, data, token),
+  deleteUser: (id: string, token?: string): Promise<void> => ApiClient.delete(`/api/admin/users/${id}`, token),
+}
 
 export default ApiClient;

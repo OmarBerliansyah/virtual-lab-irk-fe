@@ -13,16 +13,20 @@ const Navbar = () => {
   const navItems = [
     { path: "/", label: "Home" },
     { path: "/timeline", label: "Timeline" },
-    { path: "/virtual-lab", label: "Virtual Lab" },
+    { path: "/virtual-lab", label: "Virtual Lab", requireAuth: true }, // Only show when logged in
     // { path: "/whiteboard", label: "Whiteboard" },
     { path: "/assistant", label: "Assistant", requireRole: 'assistant' },
+    { path: "/admin", label: "Admin", requireRole: 'admin' },
   ];
 
   const isActive = (path: string) => location.pathname === path;
 
-  // Filter nav items based on user role
+  // Filter nav items based on user role and authentication
   const filteredNavItems = navItems.filter(item => {
+    if (item.requireAuth && !user) return false;
+    
     if (!item.requireRole) return true;
+    
     const userRole = user?.publicMetadata?.role as string;
     return userRole === item.requireRole || userRole === 'admin';
   });

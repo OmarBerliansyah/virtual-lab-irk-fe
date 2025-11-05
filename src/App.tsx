@@ -7,6 +7,7 @@ import Home from "./pages/Home";
 import Timeline from "./pages/Timeline";
 import VirtualLab from "./pages/VirtualLab";
 import AssistantDashboard from "./pages/AssistantDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -29,19 +30,37 @@ const AppContent = () => {
           {/* Rute Publik */}
           <Route path="/" element={<Home />} />
           <Route path="/timeline" element={<Timeline />} />
-          <Route path="/virtual-lab" element={<VirtualLab />} />
+
+          {/* Rute Terproteksi (Semua Role) */}
+          <Route 
+            path="/virtual-lab" 
+            element={
+              <AuthWrapper>
+                <VirtualLab />
+              </AuthWrapper>
+            } 
+          />
 
           {/* Rute Terproteksi (Hanya Asisten) */}
           <Route 
             path="/assistant" 
             element={
-              <SignedIn>
-                <AuthWrapper requireRole="assistant">
-                  <AssistantDashboard />
-                </AuthWrapper>
-              </SignedIn>
+              <AuthWrapper requireRole="assistant">
+                <AssistantDashboard />
+              </AuthWrapper>
             } 
           />
+
+          {/* Rute Terproteksi (Hanya Admin) */}
+          <Route 
+            path="/admin" 
+            element={
+              <AuthWrapper requireRole="admin">
+                <AdminDashboard />
+              </AuthWrapper>
+            } 
+          />
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
