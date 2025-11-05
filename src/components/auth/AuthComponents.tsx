@@ -30,17 +30,6 @@ export function AuthWrapper({ children, requireRole }: AuthWrapperProps) {
     }
   }, [requireRole, isSignedIn, user, toast]);
 
-  // Show login success toast
-  useEffect(() => {
-    if (isSignedIn && user) {
-      toast({
-        title: "Login Berhasil",
-        description: `Selamat datang, ${user.emailAddresses[0]?.emailAddress || 'User'}!`,
-        duration: 20000, 
-      });
-    }
-  }, [isSignedIn, user, toast]);
-
   if (!isSignedIn) {
     return (
       <div className="flex items-center justify-center min-h-screen">

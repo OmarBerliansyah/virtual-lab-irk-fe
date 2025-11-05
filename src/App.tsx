@@ -14,18 +14,42 @@ import Footer from "./components/Footer";
 import SplashScreen from "./components/SplashScreen";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthWrapper } from "./components/auth/AuthComponents";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SignedIn, SignIn, SignUp } from "@clerk/clerk-react";
 import { useGlobalErrorHandler } from "./hooks/use-global-error-handler";
+import { useUser } from "@clerk/clerk-react";
+import { useToast } from "@/components/ui/use-toast";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
   const location = useLocation();
   const isWhiteboardPage = location.pathname === '/whiteboard';
+  const { isSignedIn, user } = useUser();
+  const { toast } = useToast();
   
   // Initialize global error handler
   useGlobalErrorHandler();
+
+  useEffect(() => {
+    if (isSignedIn && user) {
+      const hasShownWelcomeThisSession = sessionStorage.getItem('hasShownWelcome');
+      
+      if (!hasShownWelcomeThisSession) {
+        toast({
+          title: "Login Berhasil",
+          description: `Selamat datang, ${user.emailAddresses[0]?.emailAddress || 'User'}!`,
+          duration: 10000, // 10 seconds
+        });
+        sessionStorage.setItem('hasShownWelcome', 'true');
+      }
+    }
+    
+    // Clear the flag when user signs out
+    if (!isSignedIn) {
+      sessionStorage.removeItem('hasShownWelcome');
+    }
+  }, [isSignedIn, user, toast]);
 
   return (
     <div className="flex flex-col min-h-screen">
