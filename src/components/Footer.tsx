@@ -50,7 +50,7 @@ const Footer = () => {
                 <Mail className="h-5 w-5" />
               </a>
               <a
-                href="#"
+                href="https://informatika.stei.itb.ac.id/~rinaldi.munir/"
                 className="text-muted-foreground hover:text-primary transition-colors"
                 aria-label="External Link"
               >

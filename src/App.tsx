@@ -8,6 +8,7 @@ import Timeline from "./pages/Timeline";
 import VirtualLab from "./pages/VirtualLab";
 import AssistantDashboard from "./pages/AssistantDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import ProfilePage from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -18,6 +19,7 @@ import { useState, useEffect } from "react";
 import { SignedIn, SignIn, SignUp } from "@clerk/clerk-react";
 import { useGlobalErrorHandler } from "./hooks/use-global-error-handler";
 import { useUser } from "@clerk/clerk-react";
+import { useUserProfile } from "./hooks/useUserProfile";
 import { useToast } from "@/components/ui/use-toast";
 
 const queryClient = new QueryClient();
@@ -26,19 +28,23 @@ const AppContent = () => {
   const location = useLocation();
   const isWhiteboardPage = location.pathname === '/whiteboard';
   const { isSignedIn, user } = useUser();
+  const { user: dbUser, loading: profileLoading } = useUserProfile();
   const { toast } = useToast();
   
   // Initialize global error handler
   useGlobalErrorHandler();
 
   useEffect(() => {
-    if (isSignedIn && user) {
+    if (isSignedIn && user && dbUser && !profileLoading) {
       const hasShownWelcomeThisSession = sessionStorage.getItem('hasShownWelcome');
       
       if (!hasShownWelcomeThisSession) {
+        const roleText = dbUser.role === 'admin' ? ' (Admin)' : 
+                        dbUser.role === 'assistant' ? ' (Assistant)' : '';
+        
         toast({
           title: "Login Berhasil",
-          description: `Selamat datang, ${user.emailAddresses[0]?.emailAddress || 'User'}!`,
+          description: `Selamat datang, ${dbUser.email}${roleText}!`,
           duration: 10000, // 10 seconds
         });
         sessionStorage.setItem('hasShownWelcome', 'true');
@@ -49,7 +55,7 @@ const AppContent = () => {
     if (!isSignedIn) {
       sessionStorage.removeItem('hasShownWelcome');
     }
-  }, [isSignedIn, user, toast]);
+  }, [isSignedIn, user, dbUser, profileLoading, toast]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -66,6 +72,15 @@ const AppContent = () => {
             element={
               <AuthWrapper>
                 <VirtualLab />
+              </AuthWrapper>
+            } 
+          />
+
+          <Route 
+            path="/profile" 
+            element={
+              <AuthWrapper>
+                <ProfilePage />
               </AuthWrapper>
             } 
           />

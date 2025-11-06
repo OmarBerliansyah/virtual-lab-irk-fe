@@ -1,28 +1,29 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@clerk/clerk-react';
-import { adminApi, eventsApi, tasksApi, Event, Task, User } from '@/lib/api';
+import { createAuthenticatedApi, publicApi } from '@/services/api';
+import { useApiAuth } from './useApiAuth';
 import { useToast } from '@/hooks/use-toast';
-
+import type { Event, Task, User } from '@/types/api';
 
 // Events API Hooks
 export const useEvents = (course?: string) => {
   return useQuery({
     queryKey: ['events', course],
     queryFn: async () => {
-      return eventsApi.getEvents(course);
+      return publicApi.getEvents(course);
     },
   });
 };
 
 export const useCreateEvent = () => {
-  const { getToken } = useAuth();
+  const { getAuthHeaders } = useApiAuth();
+  const api = createAuthenticatedApi(getAuthHeaders);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
   return useMutation({
     mutationFn: async (event: Omit<Event, '_id' | 'createdAt' | 'updatedAt'>) => {
-      const token = await getToken();
-      return eventsApi.createEvent(event, token || undefined);
+      return api.createEvent(event);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
@@ -36,21 +37,21 @@ export const useCreateEvent = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
-        duration: 20000,
+        duration: 20000, 
       });
     },
   });
 };
 
 export const useUpdateEvent = () => {
-  const { getToken } = useAuth();
+  const { getAuthHeaders } = useApiAuth();
+  const api = createAuthenticatedApi(getAuthHeaders);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
   return useMutation({
     mutationFn: async ({ id, event }: { id: string; event: Partial<Event> }) => {
-      const token = await getToken();
-      return eventsApi.updateEvent(id, event, token || undefined);
+      return api.updateEvent(id, event);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
@@ -64,21 +65,20 @@ export const useUpdateEvent = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
-        duration: 20000, 
       });
     },
   });
 };
 
 export const useDeleteEvent = () => {
-  const { getToken } = useAuth();
+  const { getAuthHeaders } = useApiAuth();
+  const api = createAuthenticatedApi(getAuthHeaders);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
   return useMutation({
     mutationFn: async (id: string) => {
-      const token = await getToken();
-      return eventsApi.deleteEvent(id, token || undefined);
+      return api.deleteEvent(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
@@ -92,7 +92,6 @@ export const useDeleteEvent = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
-        duration: 20000, 
       });
     },
   });
@@ -100,26 +99,26 @@ export const useDeleteEvent = () => {
 
 // Tasks API Hooks
 export const useTasks = () => {
-  const { getToken } = useAuth();
+  const { getAuthHeaders } = useApiAuth();
+  const api = createAuthenticatedApi(getAuthHeaders);
   
   return useQuery({
     queryKey: ['tasks'],
     queryFn: async () => {
-      const token = await getToken();
-      return tasksApi.getTasks(token || undefined);
+      return api.getTasks();
     },
   });
 };
 
 export const useCreateTask = () => {
-  const { getToken } = useAuth();
+  const { getAuthHeaders } = useApiAuth();
+  const api = createAuthenticatedApi(getAuthHeaders);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
   return useMutation({
     mutationFn: async (task: Omit<Task, '_id' | 'createdAt' | 'updatedAt'>) => {
-      const token = await getToken();
-      return tasksApi.createTask(task, token || undefined);
+      return api.createTask(task);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -140,14 +139,14 @@ export const useCreateTask = () => {
 };
 
 export const useUpdateTask = () => {
-  const { getToken } = useAuth();
+  const { getAuthHeaders } = useApiAuth();
+  const api = createAuthenticatedApi(getAuthHeaders);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
   return useMutation({
     mutationFn: async ({ id, task }: { id: string; task: Partial<Task> }) => {
-      const token = await getToken();
-      return tasksApi.updateTask(id, task, token || undefined);
+      return api.updateTask(id, task);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -158,24 +157,23 @@ export const useUpdateTask = () => {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
+        title: "Error", 
         description: error.message,
         variant: "destructive",
-        duration: 20000, 
       });
     },
   });
 };
 
 export const useDeleteTask = () => {
-  const { getToken } = useAuth();
+  const { getAuthHeaders } = useApiAuth();
+  const api = createAuthenticatedApi(getAuthHeaders);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
   return useMutation({
     mutationFn: async (id: string) => {
-      const token = await getToken();
-      return tasksApi.deleteTask(id, token || undefined);
+      return api.deleteTask(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -189,101 +187,57 @@ export const useDeleteTask = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
-        duration: 20000, 
       });
     },
   });
 };
 
-export const useGetUser = () => {
-  const { getToken } = useAuth();
-
+// Health check
+export const useHealth = () => {
   return useQuery({
-    queryKey: ['admin'],
+    queryKey: ['health'],
     queryFn: async () => {
-      const token = await getToken();
-      return adminApi.getAllUsers(token || undefined);
+      return publicApi.getHealth();
+    },
+    refetchInterval: 30000,
+  });
+};
+
+// Admin API Hooks
+export const useGetUser = () => {
+  const { getAuthHeaders } = useApiAuth();
+  const api = createAuthenticatedApi(getAuthHeaders);
+  
+  return useQuery({
+    queryKey: ['admin', 'users'],
+    queryFn: async () => {
+      return api.getAllUsers();
     },
   });
-}
+};
 
 export const useGetUserById = (id: string) => {
-  const { getToken } = useAuth();
-
+  const { getAuthHeaders } = useApiAuth();
+  const api = createAuthenticatedApi(getAuthHeaders);
+  
   return useQuery({
-    queryKey: ['admin'],
+    queryKey: ['admin', 'user', id],
     queryFn: async () => {
-      const token = await getToken();
-      return adminApi.getUserById(id, token || undefined);
+      return api.getUserById(id);
     },
-  });
-};
-
-export const useCreateUserById = () => {
-  const { getToken } = useAuth();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: async ({ id, role }: { id: string; role: string }) => {
-      const token = await getToken();
-      return adminApi.createUserById(id, role, token || undefined);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin'] });
-      toast({
-        title: "Success",
-        description: "User created successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-        duration: 20000, 
-      });
-    },
-  });
-};
-
-export const useUpdateUserById = () => {
-  const { getToken } = useAuth();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const token = await getToken();
-      return adminApi.updateUserById(id, token || undefined);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin'] });
-      toast({
-        title: "Success",
-        description: "User role updated successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-        duration: 20000, 
-      });
-    },
+    enabled: !!id,
   });
 };
 
 export const useUpdateUser = () => {
-  const { getToken } = useAuth();
+  const { getAuthHeaders } = useApiAuth();
+  const api = createAuthenticatedApi(getAuthHeaders);
   const queryClient = useQueryClient();
   const { toast } = useToast();
-
+  
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<User> }) => {
-      const token = await getToken();
-      return adminApi.updateUser(id, data, token || undefined);
+      return api.updateUser(id, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin'] });
@@ -297,21 +251,20 @@ export const useUpdateUser = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
-        duration: 20000, 
       });
-    }
+    },
   });
 };
 
 export const useDeleteUser = () => {
-  const { getToken } = useAuth();
+  const { getAuthHeaders } = useApiAuth();
+  const api = createAuthenticatedApi(getAuthHeaders);
   const queryClient = useQueryClient();
   const { toast } = useToast();
-
+  
   return useMutation({
     mutationFn: async (id: string) => {
-      const token = await getToken();
-      return adminApi.deleteUser(id, token || undefined);
+      return api.deleteUser(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin'] });
@@ -325,7 +278,6 @@ export const useDeleteUser = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
-        duration: 20000, 
       });
     },
   });

@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, BookOpen, Users, Award, Newspaper, Loader2 } from "lucide-react";
+import { ArrowRight, BookOpen, Users, Award, Newspaper, Loader2, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useState } from "react";
@@ -12,16 +12,16 @@ import {
   DialogDescription, 
   DialogTrigger 
 } from "@/components/ui/dialog";
-
-interface Highlight {
-  type: string;
-  title: string;
-  description: string;
-  image: string;
-  date: string;
-}
+import { useEvents } from "@/hooks/use-api";
+import type { Event } from "@/types/api";
 
 const Home = () => {
+  // Fetch events from API
+  const { data: allEvents, isLoading: eventsLoading, error: eventsError } = useEvents();
+  
+  // Filter highlight events
+  const highlightEvents = allEvents?.filter(event => event.type === 'highlight') || [];
+
   //  data while loading or if API fails
   const Courses = [
     { code: "IF1220", name: "Matematika Diskrit" },
@@ -31,27 +31,37 @@ const Home = () => {
     { code: "IF2224", name: "Teori Bahasa Formal dan Otomata" },
   ];
 
-  const Highlights = [
+  // Fallback highlight data when API fails or no highlights available
+  const FallbackHighlights = [
     {
-      type: "tasks",
+      _id: "fallback-1",
       title: "Tugas Akhir Semester",
       description: "Lakukan optimasasi algoritma pencarian untuk dataset besar.",
-      image: "https://images.unsplash.com/photo-1635372722656-389f87a941b7?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1931",
-      date: "2025-10-15",
+      photoUrl: "https://images.unsplash.com/photo-1635372722656-389f87a941b7?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1931",
+      start: "2025-10-15",
+      type: "highlight" as const,
+      course: "IF2211",
+      linkAttachments: [],
     },
     {
-      type: "publication",
+      _id: "fallback-2", 
       title: "Paper Published in IEEE Transactions",
       description: "Latest research on graph algorithms published in top-tier journal.",
-      image: "https://images.unsplash.com/photo-1532619187608-e5375cab36aa?w=800&q=80",
-      date: "2025-10-10",
+      photoUrl: "https://images.unsplash.com/photo-1532619187608-e5375cab36aa?w=800&q=80",
+      start: "2025-10-10",
+      type: "highlight" as const,
+      course: "IF2211",
+      linkAttachments: [],
     },
     {
-      type: "project",
-      title: "Virtual Lab Tools Expansion",
+      _id: "fallback-3",
+      title: "Virtual Lab Tools Expansion", 
       description: "New computational tools added to our virtual laboratory platform.",
-      image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&q=80",
-      date: "2025-10-05",
+      photoUrl: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&q=80",
+      start: "2025-10-05",
+      type: "highlight" as const,
+      course: "IF2211",
+      linkAttachments: [],
     },
   ];
 
@@ -118,10 +128,11 @@ const Home = () => {
     },
   ];
 
-  const [selectedHighlight, setSelectedHighlight] = useState<Highlight | null>(null);
+  const [selectedHighlight, setSelectedHighlight] = useState<Event | null>(null);
 
   const courses = Courses;
-  const highlights = Highlights;
+  // Use real highlight events or fallback data
+  const highlights = highlightEvents.length > 0 ? highlightEvents : FallbackHighlights;
   const assistants = Assistants;
 
   return (
@@ -220,11 +231,37 @@ const Home = () => {
               Latest Highlights
             </h2>
 
+            {/* Loading State */}
+            {eventsLoading && (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin mr-2" />
+                <span>Loading highlights...</span>
+              </div>
+            )}
+
+            {/* Error State */}
+            {eventsError && !eventsLoading && (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground mb-4">
+                  Unable to load highlights from server. Showing sample content.
+                </p>
+              </div>
+            )}
+
+            {/* No Highlights Available */}
+            {!eventsLoading && !eventsError && highlightEvents.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground mb-4">
+                  No highlights available yet. Check back soon for updates!
+                </p>
+              </div>
+            )}
+
             <Dialog open={!!selectedHighlight} onOpenChange={(isOpen) => !isOpen && setSelectedHighlight(null)}>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {highlights.map((item, index) => (
                   <motion.div
-                    key={index}
+                    key={item._id || index}
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
@@ -232,26 +269,52 @@ const Home = () => {
                   >
                     <Card className="overflow-hidden card-elevated h-full flex flex-col">
                       <div className="relative h-48 overflow-hidden">
-                        <img
-                          src={item.image}
-                          alt={item.title}
-                          className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                        />
-                        <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
-                          <Newspaper className="inline h-3 w-3 mr-1" />
-                          NEWS
+                        {item.photoUrl ? (
+                          <img
+                            src={item.photoUrl}
+                            alt={item.title}
+                            className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                            onError={(e) => {
+                              e.currentTarget.src = "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&q=80";
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
+                            <Newspaper className="h-12 w-12 text-primary/60" />
+                          </div>
+                        )}
+                        <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-green-600 text-white text-xs font-semibold">
+                          <Award className="inline h-3 w-3 mr-1" />
+                          HIGHLIGHT
                         </div>
                       </div>
                       <div className="p-6 flex-1 flex flex-col">
                         <p className="text-sm text-muted-foreground mb-2">
-                          {new Date(item.date).toLocaleDateString('id-ID', {
+                          {new Date(item.start).toLocaleDateString('id-ID', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric'
                           })}
                         </p>
-                        <h3 className="text-xl font-semibold mb-3">{item.title}</h3>
-                        <p className="text-muted-foreground flex-1">{item.description}</p>
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="text-xl font-semibold">{item.title}</h3>
+                          <span className="text-xs bg-muted px-2 py-1 rounded text-muted-foreground ml-2">
+                            {item.course}
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground flex-1 line-clamp-3">
+                          {item.description || "No description available."}
+                        </p>
+                        
+                        {/* Link attachments preview */}
+                        {item.linkAttachments && item.linkAttachments.length > 0 && (
+                          <div className="mt-3 pt-3 border-t">
+                            <p className="text-xs text-muted-foreground mb-2">
+                              {item.linkAttachments.length} link{item.linkAttachments.length > 1 ? 's' : ''} attached
+                            </p>
+                          </div>
+                        )}
+                        
                         <DialogTrigger asChild>
                           <Button 
                             variant="link" 
@@ -270,23 +333,63 @@ const Home = () => {
               <DialogContent className="sm:max-w-lg">
                 {selectedHighlight && (
                   <>
-                    <img
-                      src={selectedHighlight.image}
-                      alt={selectedHighlight.title}
-                      className="w-full h-48 object-cover rounded-t-lg"
-                    />
-                    <DialogHeader className="pt-4">
-                      <DialogTitle>{selectedHighlight.title}</DialogTitle>
+                    {selectedHighlight.photoUrl ? (
+                      <img
+                        src={selectedHighlight.photoUrl}
+                        alt={selectedHighlight.title}
+                        className="w-full h-48 object-cover rounded-lg mb-4"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-48 bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center rounded-lg mb-4">
+                        <Award className="h-12 w-12 text-primary/60" />
+                      </div>
+                    )}
+                    
+                    <DialogHeader>
+                      <div className="flex items-start justify-between">
+                        <DialogTitle className="flex-1">{selectedHighlight.title}</DialogTitle>
+                        <span className="text-xs bg-muted px-2 py-1 rounded text-muted-foreground ml-2">
+                          {selectedHighlight.course}
+                        </span>
+                      </div>
                       <DialogDescription>
-                        {new Date(selectedHighlight.date).toLocaleDateString('id-ID', {
+                        {new Date(selectedHighlight.start).toLocaleDateString('id-ID', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric'
                         })}
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="py-4 text-sm text-muted-foreground">
-                      {selectedHighlight.description}
+                    
+                    <div className="space-y-4">
+                      {selectedHighlight.description && (
+                        <div className="py-4 text-sm text-muted-foreground whitespace-pre-wrap">
+                          {selectedHighlight.description}
+                        </div>
+                      )}
+                      
+                      {selectedHighlight.linkAttachments && selectedHighlight.linkAttachments.length > 0 && (
+                        <div className="border-t pt-4">
+                          <h4 className="font-medium text-sm mb-3">Related Links</h4>
+                          <div className="space-y-2">
+                            {selectedHighlight.linkAttachments.map((link, index) => (
+                              <a 
+                                key={index}
+                                href={link.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline p-2 rounded border border-border hover:bg-muted/50 transition-colors"
+                              >
+                                <ExternalLink className="h-4 w-4 flex-shrink-0" />
+                                <span className="flex-1">{link.title}</span>
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </>
                 )}

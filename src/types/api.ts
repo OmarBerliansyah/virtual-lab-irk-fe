@@ -1,11 +1,35 @@
 // API Types
+export interface User {
+  _id: string;
+  clerkId: string;
+  email: string;
+  role: 'user' | 'assistant' | 'admin';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProfileUser {
+  id: string;
+  clerkId: string;
+  email: string;
+  role: 'user' | 'assistant' | 'admin';
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Event {
   _id: string;
   title: string;
   start: string;
   end?: string;
   course: string;
-  type: 'deadline' | 'release' | 'assessment';
+  type: 'deadline' | 'release' | 'assessment' | 'highlight';
+  description?: string;
+  photoUrl?: string;
+  linkAttachments?: Array<{
+    title: string;
+    url: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 }
@@ -41,12 +65,28 @@ export interface CreateEventRequest {
   start: string;
   end?: string;
   course: string;
-  type: 'deadline' | 'release' | 'assessment';
+  type: 'deadline' | 'release' | 'assessment' | 'highlight';
+  description?: string;
+  photoUrl?: string;
+  linkAttachments?: Array<{
+    title: string;
+    url: string;
+  }>;
 }
 
 export type UpdateEventRequest = Partial<CreateEventRequest>;
 
+// User request types
+export interface UpdateUserRequest {
+  email?: string;
+}
+
 // Response types
+export interface UserProfileResponse {
+  success: boolean;
+  user: ProfileUser;
+}
+
 export interface HealthResponse {
   status: string;
   timestamp: string;

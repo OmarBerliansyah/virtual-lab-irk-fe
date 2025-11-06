@@ -6,7 +6,7 @@ import {
   useUpdateUser,
   useDeleteUser,
 } from "@/hooks/use-api";
-import { User as UserType } from "@/lib/api";
+import { User as UserType } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import {
   Table,

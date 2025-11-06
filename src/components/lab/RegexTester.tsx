@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, Search, Info, Copy, CheckCircle } from "lucide-react";
+import { Upload, Info, Copy, CheckCircle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 interface MatchResult {
@@ -98,6 +98,12 @@ const RegexTester = () => {
     }
   }, [pattern, flags, sourceText]);
 
+  const filteredResults = searchTerm 
+    ? searchResults.filter(result => 
+        result.match.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : searchResults;
+
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
@@ -129,55 +135,7 @@ const RegexTester = () => {
     if (e.target) e.target.value = "";
   };
 
-  const performSearch = () => {
-    if (!searchTerm || !pattern) {
-      toast({
-        variant: "destructive",
-        title: "Search Error",
-        description: "Please enter both a search term and regex pattern",
-      });
-      return;
-    }
 
-    try {
-      const finalFlags = flags.includes('g') ? flags : flags + 'g';
-      const regex = new RegExp(pattern, finalFlags);
-      const matches: MatchResult[] = [];
-      
-      let match;
-      const globalRegex = new RegExp(pattern, finalFlags);
-      while ((match = globalRegex.exec(searchTerm)) !== null) {
-        matches.push({
-          match: match[0],
-          index: match.index,
-          groups: match.slice(1),
-          namedGroups: match.groups
-        });
-        
-        if (match[0].length === 0) {
-          globalRegex.lastIndex++;
-        }
-      }
-
-      if (matches.length > 0) {
-        toast({
-          title: "Search Results",
-          description: `Found ${matches.length} matches in search term`,
-        });
-      } else {
-        toast({
-          title: "Search Results",
-          description: "No matches found in search term",
-        });
-      }
-    } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Search Error",
-        description: "Invalid regex pattern",
-      });
-    }
-  };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -211,19 +169,14 @@ const RegexTester = () => {
           />
         </div>
         <div>
-          <Label htmlFor="search">Test Search Term</Label>
-          <div className="flex gap-2">
-            <Input
-              id="search"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Test a specific term"
-              className="font-mono"
-            />
-            <Button onClick={performSearch} size="sm">
-              <Search className="h-4 w-4" />
-            </Button>
-          </div>
+          <Label htmlFor="search">Filter Results</Label>
+          <Input
+            id="search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Filter matches in real-time"
+            className="font-mono"
+          />
         </div>
       </div>
 
@@ -277,14 +230,21 @@ const RegexTester = () => {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center justify-between">
                 <span>Detailed Results</span>
-                <Badge variant="secondary">{searchResults.length} matches</Badge>
+                <div className="flex gap-2">
+                  {searchTerm && (
+                    <Badge variant="outline">{filteredResults.length} filtered</Badge>
+                  )}
+                  <Badge variant="secondary">{searchResults.length} total</Badge>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 max-h-64 overflow-y-auto">
-              {searchResults.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No matches found</p>
+              {filteredResults.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  {searchTerm ? "No matches found for current filter" : "No matches found"}
+                </p>
               ) : (
-                searchResults.map((result, index) => (
+                filteredResults.map((result, index) => (
                   <div key={index} className="p-3 bg-muted/30 rounded-lg space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">Match #{index + 1}</span>

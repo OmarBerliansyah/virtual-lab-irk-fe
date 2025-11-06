@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 interface AuthWrapperProps {
   children: React.ReactNode;
@@ -10,25 +11,38 @@ interface AuthWrapperProps {
 }
 
 export function AuthWrapper({ children, requireRole }: AuthWrapperProps) {
-  const { isSignedIn, user } = useUser();
+  const { isSignedIn } = useUser();
+  const { user: dbUser, loading: profileLoading, error: profileError, isAdmin, isAssistant } = useUserProfile();
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<'sign-in' | 'sign-up'>('sign-in');
   const { toast } = useToast();
 
   // Check for access denied and show toast
   useEffect(() => {
-    if (requireRole && isSignedIn && user) {
-      const userRole = user?.publicMetadata?.role as string;
-      if (userRole !== requireRole && userRole !== 'admin') {
+    if (requireRole && isSignedIn && dbUser && !profileLoading) {
+      const hasAccess = requireRole === 'admin' ? isAdmin : (isAdmin || isAssistant);
+      
+      if (!hasAccess) {
         toast({
           title: "Akses Ditolak",
-          description: `Anda memerlukan izin ${requireRole} untuk mengakses area ini. Role saat ini: ${userRole || 'user'}`,
+          description: `Anda memerlukan izin ${requireRole} untuk mengakses area ini. Role saat ini: ${dbUser.role}`,
           variant: "destructive",
           duration: 20000, 
         });
       }
     }
-  }, [requireRole, isSignedIn, user, toast]);
+  }, [requireRole, isSignedIn, dbUser, profileLoading, isAdmin, isAssistant, toast]);
+
+  // Show profile error if any
+  useEffect(() => {
+    if (profileError) {
+      toast({
+        title: "Error Loading Profile",
+        description: profileError,
+        variant: "destructive",
+      });
+    }
+  }, [profileError, toast]);
 
   if (!isSignedIn) {
     return (
@@ -78,11 +92,23 @@ export function AuthWrapper({ children, requireRole }: AuthWrapperProps) {
     );
   }
 
+  // Show loading while fetching profile
+  if (profileLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Check role if required
-  if (requireRole) {
-    const userRole = user?.publicMetadata?.role as string;
+  if (requireRole && dbUser) {
+    const hasAccess = requireRole === 'admin' ? isAdmin : (isAdmin || isAssistant);
     
-    if (userRole !== requireRole && userRole !== 'admin') {
+    if (!hasAccess) {
       return (
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center space-y-4">
@@ -91,7 +117,10 @@ export function AuthWrapper({ children, requireRole }: AuthWrapperProps) {
               You need {requireRole} permissions to access this area.
             </p>
             <p className="text-sm text-muted-foreground">
-              Current role: {userRole || 'user'}
+              Current role: {dbUser.role}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Email: {dbUser.email}
             </p>
           </div>
         </div>

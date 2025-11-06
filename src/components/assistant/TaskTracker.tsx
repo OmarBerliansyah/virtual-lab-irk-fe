@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Plus, Calendar, Clock, User, Trash2, Edit, Info, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from "@/hooks/use-api";
-import { Task as ApiTask } from "@/lib/api";
+import { Task as ApiTask } from "@/types/api";
 
 interface Task {
   id: string;
@@ -127,6 +127,102 @@ const TaskTracker = () => {
     tags: []
   });
 
+  useEffect(() => {
+    if (editingTask) {
+      setNewTask({
+        title: editingTask.title,
+        description: editingTask.description,
+        priority: editingTask.priority,
+        status: editingTask.status,
+        dueDate: editingTask.dueDate,
+        assignee: editingTask.assignee,
+        tags: editingTask.tags
+      });
+    }
+  }, [editingTask]);
+
+  const updateTask = () => {
+    if (!editingTask) return;
+    
+    if (!newTask.title?.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Task title is required",
+      });
+      return;
+    }
+
+    if (newTask.status === "Done" && editingTask.dueDate) {
+      const dueDate = new Date(editingTask.dueDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (dueDate < today) {
+        const confirmOverdue = confirm(
+          "This task is overdue. Are you sure you want to mark it as done?"
+        );
+        if (!confirmOverdue) return;
+      }
+    }
+
+    if (newTask.priority === "high" && !newTask.assignee?.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Constraint Violation",
+        description: "High priority tasks must have an assignee",
+      });
+      return;
+    }
+
+    updateTaskMutation.mutate({
+      id: editingTask.id,
+      task: {
+        title: newTask.title,
+        description: newTask.description,
+        priority: newTask.priority as "low" | "medium" | "high",
+        status: newTask.status as "To Do" | "In Progress" | "Done",
+        dueDate: newTask.dueDate,
+        assignee: newTask.assignee,
+        tags: newTask.tags || [],
+      }
+    });
+
+    const updatedTask: Task = {
+      ...editingTask,
+      title: newTask.title!,
+      description: newTask.description || "",
+      priority: newTask.priority as "low" | "medium" | "high",
+      status: newTask.status as "To Do" | "In Progress" | "Done",
+      dueDate: newTask.dueDate,
+      assignee: newTask.assignee,
+      tags: newTask.tags || [],
+    };
+
+    setData(prevData => ({
+      ...prevData,
+      tasks: {
+        ...prevData.tasks,
+        [editingTask.id]: updatedTask
+      }
+    }));
+
+    setEditingTask(null);
+    setNewTask({
+      title: "",
+      description: "",
+      priority: "medium",
+      dueDate: "",
+      assignee: "",
+      tags: []
+    });
+
+    toast({
+      title: "Task Updated",
+      description: "Task has been updated successfully",
+    });
+  };
+
   const onDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
 
@@ -179,6 +275,7 @@ const TaskTracker = () => {
       taskIds: finishTaskIds
     };
 
+    // Update local state first
     setData({
       ...data,
       columns: {
@@ -187,6 +284,31 @@ const TaskTracker = () => {
         [newFinish.id]: newFinish
       }
     });
+
+    // Update task status via API
+    const task = data.tasks[draggableId];
+    if (task) {
+      const newStatus = finish.title as "To Do" | "In Progress" | "Done";
+      updateTaskMutation.mutate({
+        id: task.id,
+        task: {
+          ...task,
+          status: newStatus
+        }
+      });
+
+      // Update task in local state
+      setData(prevData => ({
+        ...prevData,
+        tasks: {
+          ...prevData.tasks,
+          [draggableId]: {
+            ...task,
+            status: newStatus
+          }
+        }
+      }));
+    }
 
     toast({
       title: "Task Moved",
@@ -374,6 +496,8 @@ const TaskTracker = () => {
                   <Input
                     id="dueDate"
                     type="date"
+                    min={new Date().toISOString().split("T")[0]}
+                    max="3020-12-31"
                     value={newTask.dueDate || ""}
                     onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
                   />
@@ -400,16 +524,16 @@ const TaskTracker = () => {
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {data.columnOrder.map((columnId) => {
             const column = data.columns[columnId];
             const tasks = column.taskIds.map(taskId => data.tasks[taskId]);
 
             return (
-              <div key={column.id} className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-lg">{column.title}</h3>
-                  <Badge variant="secondary">{tasks.length}</Badge>
+              <div key={column.id} className="space-y-3">
+                <div className="flex items-center justify-between px-2">
+                  <h3 className="font-semibold text-base md:text-lg">{column.title}</h3>
+                  <Badge variant="secondary" className="text-xs">{tasks.length}</Badge>
                 </div>
                 
                 <Droppable droppableId={column.id}>
@@ -417,13 +541,13 @@ const TaskTracker = () => {
                     <div
                       {...provided.droppableProps}
                       ref={provided.innerRef}
-                      className={`min-h-[200px] p-2 rounded-lg border-2 border-dashed transition-colors ${
+                      className={`min-h-[250px] md:min-h-[300px] p-3 rounded-lg border-2 border-dashed transition-all duration-200 ${
                         snapshot.isDraggingOver 
-                          ? "border-primary bg-primary/5" 
-                          : "border-muted-foreground/20"
+                          ? "border-primary bg-primary/5 scale-[1.02]" 
+                          : "border-muted-foreground/20 hover:border-muted-foreground/30"
                       }`}
                     >
-                      <div className="space-y-3">
+                      <div className="space-y-2 md:space-y-3">
                         {tasks.map((task, index) => (
                           <Draggable key={task.id} draggableId={task.id} index={index}>
                             {(provided, snapshot) => (
@@ -431,20 +555,20 @@ const TaskTracker = () => {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`cursor-move transition-shadow ${
-                                  snapshot.isDragging ? "shadow-lg rotate-1" : "hover:shadow-md"
+                                className={`cursor-move transition-all duration-200 w-full ${
+                                  snapshot.isDragging ? "shadow-lg rotate-1 scale-105" : "hover:shadow-md hover:scale-[1.02]"
                                 }`}
                               >
-                                <CardHeader className="pb-2">
-                                  <div className="flex justify-between items-start">
-                                    <CardTitle className="text-sm font-medium line-clamp-2">
+                                <CardHeader className="pb-3 px-4 pt-4">
+                                  <div className="flex justify-between items-start gap-2">
+                                    <CardTitle className="text-sm font-semibold line-clamp-2 flex-1 min-w-0">
                                       {task.title}
                                     </CardTitle>
-                                    <div className="flex gap-1">
+                                    <div className="flex gap-1 flex-shrink-0">
                                       <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="h-6 w-6 p-0"
+                                        className="h-7 w-7 p-0 opacity-60 hover:opacity-100"
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           setEditingTask(task);
@@ -455,7 +579,7 @@ const TaskTracker = () => {
                                       <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                        className="h-7 w-7 p-0 text-red-500 hover:text-red-700 opacity-60 hover:opacity-100"
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           handleDeleteTask(task.id);
@@ -466,45 +590,50 @@ const TaskTracker = () => {
                                     </div>
                                   </div>
                                 </CardHeader>
-                                <CardContent className="pt-0">
+                                <CardContent className="pt-0 px-4 pb-4 space-y-3">
                                   {task.description && (
-                                    <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                                       {task.description}
                                     </p>
                                   )}
                                   
-                                  <div className="flex flex-wrap gap-2 mb-3">
+                                  <div className="flex flex-wrap gap-1.5">
                                     <Badge 
                                       variant="outline" 
-                                      className={`text-xs ${getPriorityColor(task.priority)}`}
+                                      className={`text-xs font-medium ${getPriorityColor(task.priority)}`}
                                     >
                                       {task.priority}
                                     </Badge>
-                                    {task.tags.map((tag, i) => (
+                                    {task.tags.slice(0, 3).map((tag, i) => (
                                       <Badge key={i} variant="secondary" className="text-xs">
                                         {tag}
                                       </Badge>
                                     ))}
+                                    {task.tags.length > 3 && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        +{task.tags.length - 3}
+                                      </Badge>
+                                    )}
                                   </div>
 
-                                  <div className="flex justify-between items-center text-xs text-muted-foreground">
-                                    <div className="flex items-center gap-2">
+                                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs text-muted-foreground">
+                                    <div className="flex flex-wrap items-center gap-3">
                                       {task.dueDate && (
                                         <div className="flex items-center gap-1">
-                                          <Calendar className="h-3 w-3" />
-                                          <span>{task.dueDate}</span>
+                                          <Calendar className="h-3 w-3 flex-shrink-0" />
+                                          <span className="truncate">{new Date(task.dueDate).toLocaleDateString()}</span>
                                         </div>
                                       )}
                                       {task.assignee && (
                                         <div className="flex items-center gap-1">
-                                          <User className="h-3 w-3" />
-                                          <span>{task.assignee}</span>
+                                          <User className="h-3 w-3 flex-shrink-0" />
+                                          <span className="truncate max-w-[80px]">{task.assignee}</span>
                                         </div>
                                       )}
                                     </div>
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-1 flex-shrink-0">
                                       <Clock className="h-3 w-3" />
-                                      <span>{task.createdAt}</span>
+                                      <span>{new Date(task.createdAt).toLocaleDateString()}</span>
                                     </div>
                                   </div>
                                 </CardContent>
@@ -530,6 +659,108 @@ const TaskTracker = () => {
           Tasks with due dates can be integrated with the calendar system for better scheduling.
         </AlertDescription>
       </Alert>
+
+      <Dialog open={!!editingTask} onOpenChange={(open) => {
+        if (!open) {
+          setEditingTask(null);
+          setNewTask({
+            title: "",
+            description: "",
+            priority: "medium",
+            dueDate: "",
+            assignee: "",
+            tags: []
+          });
+        }
+      }}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-title" className="text-right">Title *</Label>
+              <Input
+                id="edit-title"
+                value={newTask.title || editingTask?.title || ""}
+                onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                className="col-span-3"
+                placeholder="Task title..."
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-description" className="text-right">Description</Label>
+              <Textarea
+                id="edit-description"
+                value={newTask.description || editingTask?.description || ""}
+                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                className="col-span-3"
+                placeholder="Task description..."
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-priority" className="text-right">Priority</Label>
+              <select
+                id="edit-priority"
+                value={newTask.priority || editingTask?.priority || "medium"}
+                onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as "low" | "medium" | "high" })}
+                className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-status" className="text-right">Status</Label>
+              <select
+                id="edit-status"
+                value={newTask.status || editingTask?.status || "To Do"}
+                onChange={(e) => setNewTask({ ...newTask, status: e.target.value as "To Do" | "In Progress" | "Done" })}
+                className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+              >
+                <option value="To Do">To Do</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Done">Done</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-dueDate" className="text-right">Due Date</Label>
+              <Input
+                id="edit-dueDate"
+                type="date"
+                min={new Date().toISOString().split("T")[0]}
+                max="3020-12-31"
+                value={newTask.dueDate || editingTask?.dueDate || ""}
+                onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-assignee" className="text-right">
+                Assignee {newTask.priority === "high" && <span className="text-red-500">*</span>}
+              </Label>
+              <Input
+                id="edit-assignee"
+                value={newTask.assignee || editingTask?.assignee || ""}
+                onChange={(e) => setNewTask({ ...newTask, assignee: e.target.value })}
+                className="col-span-3"
+                placeholder="Assignee name..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingTask(null)}>
+              Cancel
+            </Button>
+            <Button onClick={updateTask}>
+              {updateTaskMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Update Task
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

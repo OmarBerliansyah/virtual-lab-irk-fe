@@ -1,10 +1,13 @@
 import type {
+  User,
   Event, 
   Task, 
   CreateTaskRequest, 
   UpdateTaskRequest, 
   CreateEventRequest, 
   UpdateEventRequest,
+  UpdateUserRequest,
+  UserProfileResponse,
   HealthResponse 
 } from '@/types/api';
 
@@ -33,6 +36,24 @@ export const publicApi = {
 
 // API service factory that requires auth headers
 export const createAuthenticatedApi = (getAuthHeaders: () => Promise<Record<string, string>>) => ({
+  getProfile: async (): Promise<UserProfileResponse> => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/api/users/profile`, { headers });
+    if (!response.ok) throw new Error('Failed to fetch user profile');
+    return response.json();
+  },
+
+  updateProfile: async (userData: UpdateUserRequest): Promise<UserProfileResponse> => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(userData)
+    });
+    if (!response.ok) throw new Error('Failed to update user profile');
+    return response.json();
+  },
+
   // Tasks CRUD
   getTasks: async (): Promise<Task[]> => {
     const headers = await getAuthHeaders();
@@ -102,5 +123,40 @@ export const createAuthenticatedApi = (getAuthHeaders: () => Promise<Record<stri
       headers
     });
     if (!response.ok) throw new Error('Failed to delete event');
+  },
+
+  // Admin - User Management
+  getAllUsers: async (): Promise<User[]> => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/api/admin/users`, { headers });
+    if (!response.ok) throw new Error('Failed to fetch users');
+    return response.json();
+  },
+
+  getUserById: async (id: string): Promise<User> => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/api/admin/users/${id}`, { headers });
+    if (!response.ok) throw new Error('Failed to fetch user');
+    return response.json();
+  },
+
+  updateUser: async (id: string, userData: Partial<User>): Promise<User> => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/api/admin/users/${id}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(userData)
+    });
+    if (!response.ok) throw new Error('Failed to update user');
+    return response.json();
+  },
+
+  deleteUser: async (id: string): Promise<void> => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/api/admin/users/${id}`, {
+      method: 'DELETE',
+      headers
+    });
+    if (!response.ok) throw new Error('Failed to delete user');
   }
 });

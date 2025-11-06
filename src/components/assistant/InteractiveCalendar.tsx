@@ -21,7 +21,7 @@ interface CourseEvent {
   start: string;
   end?: string;
   course: string;
-  type: "deadline" | "release" | "assessment";
+  type: "deadline" | "release" | "assessment" | "highlight";
   backgroundColor?: string;
   borderColor?: string;
 }
@@ -34,14 +34,6 @@ const courses = [
   { code: "IF2123", name: "Aljabar Linear dan Geometri" },
   { code: "IF2211", name: "Strategi Algoritma" },
   { code: "IF2224", name: "Teori Bahasa Formal dan Otomata" },
-];
-
-// Sample events data (akan diganti dengan API)
-const sampleEvents: CourseEvent[] = [
-  // (Data event yang sama seperti di Timeline.tsx Anda)
-  { id: "1", title: "Assignment 1: Sorting", start: "2025-11-10", course: "IF1220", type: "deadline" },
-  { id: "2", title: "Midterm Exam", start: "2025-11-15", course: "IF1220", type: "assessment" },
-  { id: "3", title: "Lab 3 Release", start: "2025-11-08", course: "IF2123", type: "release" },
 ];
 
 const getEventColor = (type: string) => {
@@ -70,12 +62,6 @@ const InteractiveCalendar = () => {
     //   .then(res => res.json())
     //   .then(data => setAllEvents(data.events))
     //   .finally(() => setIsLoading(false));
-    
-    // Mock API call
-    setTimeout(() => {
-      setAllEvents(sampleEvents);
-      setIsLoading(false);
-    }, 1000);
   }, []);
 
   const filteredEvents = allEvents
@@ -87,10 +73,6 @@ const InteractiveCalendar = () => {
 
   // Membuka modal saat tanggal diklik
   const handleDateClick = (clickInfo: DateClickArg) => {
-    // TODO: Cek role asisten di sini menggunakan hook Clerk
-    // const { user } = useUser();
-    // if (user.publicMetadata.role !== 'assistant') return;
-    
     setNewEvent({ ...newEvent, start: clickInfo.dateStr });
     setIsModalOpen(true);
   };

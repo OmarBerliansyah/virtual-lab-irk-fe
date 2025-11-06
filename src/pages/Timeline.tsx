@@ -3,7 +3,7 @@ import { useUser, useAuth } from "@clerk/clerk-react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -11,8 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar as CalendarIcon, Loader2 } from "lucide-react";
-import { useEvents, useCreateEvent } from "@/hooks/use-api";
+import { Calendar as CalendarIcon, Loader2, Plus, Edit, Trash2 } from "lucide-react";
+import { useEvents, useCreateEvent, useUpdateEvent, useDeleteEvent } from "@/hooks/use-api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,15 +24,23 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { PhotoUpload } from "@/components/ui/photo-upload";
 
 interface CourseEvent {
   id: string;
   title: string;
   start: string;
   course: string;
-  type: "deadline" | "release" | "assessment";
+  type: "deadline" | "release" | "assessment" | "highlight";
+  description?: string;
+  photoUrl?: string;
+  linkAttachments?: Array<{
+    title: string;
+    url: string;
+  }>;
   backgroundColor?: string;
   borderColor?: string;
 }
@@ -40,31 +48,45 @@ interface CourseEvent {
 const Timeline = () => {
   const { isSignedIn, user } = useUser();
   const isAssistant = user?.publicMetadata?.role === 'assistant';
+  const isAdmin = user?.publicMetadata?.role === 'admin';
+  const canManageEvents = isSignedIn;
+
   const { toast } = useToast();
 
   const [selectedCourse, setSelectedCourse] = useState<string>("all");
   
-  // HANYA fetch jika user login
   const { data: apiEvents, isLoading, error } = useEvents(
     selectedCourse === "all" ? undefined : selectedCourse
   );
 
-  // State untuk modal (pindahkan dari InteractiveCalendar)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CourseEvent | null>(null);
+  const [viewingEvent, setViewingEvent] = useState<CourseEvent | null>(null);
   const [newEvent, setNewEvent] = useState<{
     title: string;
     start: string;
     course: string;
-    type: "deadline" | "release" | "assessment";
+    type: "deadline" | "release" | "assessment" | "highlight";
+    description?: string;
+    photoUrl?: string;
+    linkAttachments?: Array<{
+      title: string;
+      url: string;
+    }>;
   }>({ 
     title: "", 
     start: "", 
     course: "IF2120", 
-    type: "deadline"
+    type: "deadline",
+    description: "",
+    photoUrl: "",
+    linkAttachments: []
   });
 
   const createEventMutation = useCreateEvent();
+  const updateEventMutation = useUpdateEvent();
+  const deleteEventMutation = useDeleteEvent();
 
   const courses = [
     { code: "all", name: "All Courses" },
@@ -75,76 +97,23 @@ const Timeline = () => {
     { code: "IF2224", name: "Teori Bahasa Formal dan Otomata" },
   ];
 
-  // Fallback events data
-  const fallbackEvents: CourseEvent[] = [
-    {
-      id: "1",
-      title: "Assignment 1: Sorting Algorithms",
-      start: "2025-11-10",
-      course: "IF1220",
-      type: "deadline",
-    },
-    {
-      id: "2",
-      title: "Midterm Exam",
-      start: "2025-11-15",
-      course: "IF1220",
-      type: "assessment",
-    },
-    {
-      id: "3",
-      title: "Lab 3: Memory Management",
-      start: "2025-11-08",
-      course: "IF2123",
-      type: "release",
-    },
-    {
-      id: "4",
-      title: "Project Proposal Due",
-      start: "2025-11-20",
-      course: "IF2224",
-      type: "deadline",
-    },
-    {
-      id: "5",
-      title: "Assignment 2: Network Protocols",
-      start: "2025-11-18",
-      course: "IF3204",
-      type: "deadline",
-    },
-    {
-      id: "6",
-      title: "Quiz 2",
-      start: "2025-11-12",
-      course: "IF3204",
-      type: "assessment",
-    },
-    {
-      id: "7",
-      title: "Lab 4: Process Scheduling",
-      start: "2025-11-25",
-      course: "IF3103",
-      type: "release",
-    },
-    {
-      id: "8",
-      title: "Final Project Presentation",
-      start: "2025-12-01",
-      course: "IF2101",
-      type: "assessment",
-    },
+  const eventCourses = [
+    { code: "none", name: "None" },
+    ...courses.filter(c => c.code !== 'all')
   ];
 
   // Tampilkan event HANYA jika login dan datanya ada
   const allEvents: CourseEvent[] = (apiEvents && !error) 
     ? apiEvents.map(event => ({
         id: event._id,
-        title: event.title,
+        title: event.title.replace(/^\d+[a-zA-Z]\s+/, ''),
         start: event.start,
         course: event.course,
         type: event.type,
-      }))
-    : fallbackEvents;
+        description: event.description,
+        photoUrl: event.photoUrl,
+        linkAttachments: event.linkAttachments,
+      })) : [];
 
   const getEventColor = (type: string) => {
     switch (type) {
@@ -154,6 +123,8 @@ const Timeline = () => {
         return { background: "hsl(184 77% 44%)", border: "hsl(184 77% 34%)" };
       case "assessment":
         return { background: "hsl(31 92% 57%)", border: "hsl(31 92% 47%)" };
+      case "highlight":
+        return { background: "hsl(120 60% 50%)", border: "hsl(120 60% 40%)" };
       default:
         return { background: "hsl(217 91% 25%)", border: "hsl(217 91% 20%)" };
     }
@@ -171,11 +142,52 @@ const Timeline = () => {
     });
 
   const handleDateClick = (clickInfo: DateClickArg) => {
-    if (!isAssistant) return;
+    if (!canManageEvents) return;
 
-    setNewEvent({ ...newEvent, start: clickInfo.dateStr });
+    setEditingEvent(null);
+    setNewEvent({ 
+      title: "", 
+      start: clickInfo.dateStr, 
+      course: "none", 
+      type: "deadline",
+      description: "",
+      photoUrl: "",
+      linkAttachments: []
+    });
     setIsModalOpen(true);
   }
+
+  const handleEditEvent = (event: CourseEvent) => {
+    setEditingEvent(event);
+    setNewEvent({
+      title: event.title,
+      start: event.start,
+      course: event.course,
+      type: event.type,
+      description: event.description || "",
+      photoUrl: event.photoUrl || "",
+      linkAttachments: event.linkAttachments || [],
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm('Are you sure you want to delete this event?')) return;
+    
+    try {
+      await deleteEventMutation.mutateAsync(eventId);
+      toast({ 
+        title: "Event Deleted", 
+        description: "Event has been removed from the calendar." 
+      });
+    } catch (error) {
+      toast({ 
+        variant: "destructive", 
+        title: "Error", 
+        description: "Failed to delete event. Please try again." 
+      });
+    }
+  };
 
   // Fungsi submit (menggunakan API)
   const handleAddEvent = async () => {
@@ -191,24 +203,89 @@ const Timeline = () => {
     setIsSubmitting(true);
     
     try {
-      await createEventMutation.mutateAsync({
-        title: newEvent.title,
-        start: newEvent.start,
-        course: newEvent.course,
-        type: newEvent.type,
-      });
+      if (editingEvent) {
+        // Update existing event
+        const updateData: {
+          title: string;
+          start: string;
+          course: string;
+          type: "deadline" | "release" | "assessment" | "highlight";
+          description?: string;
+          photoUrl?: string;
+          linkAttachments?: Array<{ title: string; url: string }>;
+        } = {
+          title: newEvent.title,
+          start: newEvent.start,
+          course: newEvent.course,
+          type: newEvent.type,
+        };
+        
+        // Add highlight-specific fields if type is highlight
+        if (newEvent.type === "highlight") {
+          if (newEvent.description) updateData.description = newEvent.description;
+          if (newEvent.photoUrl) updateData.photoUrl = newEvent.photoUrl;
+          if (newEvent.linkAttachments && newEvent.linkAttachments.length > 0) {
+            updateData.linkAttachments = newEvent.linkAttachments.filter(link => link.title && link.url);
+          }
+        }
+        
+        await updateEventMutation.mutateAsync({
+          id: editingEvent.id,
+          event: updateData
+        });
+        toast({ 
+          title: "Event Updated", 
+          description: "Event has been updated successfully." 
+        });
+      } else {
+        // Create new event
+        const eventData: {
+          title: string;
+          start: string;
+          course: string | null;
+          type: "deadline" | "release" | "assessment" | "highlight";
+          description?: string;
+          photoUrl?: string;
+          linkAttachments?: Array<{ title: string; url: string }>;
+        } = {
+          title: newEvent.title,
+          start: newEvent.start,
+          course: newEvent.course,
+          type: newEvent.type,
+        };
+        
+        // Add highlight-specific fields if type is highlight
+        if (newEvent.type === "highlight") {
+          if (newEvent.description) eventData.description = newEvent.description;
+          if (newEvent.photoUrl) eventData.photoUrl = newEvent.photoUrl;
+          if (newEvent.linkAttachments && newEvent.linkAttachments.length > 0) {
+            eventData.linkAttachments = newEvent.linkAttachments.filter(link => link.title && link.url);
+          }
+        }
+        
+        await createEventMutation.mutateAsync(eventData);
+        toast({ 
+          title: "Event Created", 
+          description: "New event added to the calendar." 
+        });
+      }
       
       setIsModalOpen(false);
-      setNewEvent({ title: "", start: "", course: "IF2120", type: "deadline" });
-      toast({ 
-        title: "Event Created", 
-        description: "New event added to the calendar." 
+      setEditingEvent(null);
+      setNewEvent({ 
+        title: "", 
+        start: "", 
+        course: "none", 
+        type: "deadline",
+        description: "",
+        photoUrl: "",
+        linkAttachments: []
       });
     } catch (error) {
       toast({ 
         variant: "destructive", 
         title: "Error", 
-        description: "Failed to create event. Please try again." 
+        description: `Failed to ${editingEvent ? 'update' : 'create'} event. Please try again.` 
       });
     } finally {
       setIsSubmitting(false);
@@ -244,6 +321,32 @@ const Timeline = () => {
             </p>
           </div>
 
+          {/* Event Management Section for Assistants */}
+          {canManageEvents && (
+            <div className="flex justify-end mb-6">
+              <Button 
+              onClick={() => {
+                setEditingEvent(null);
+                setNewEvent({ 
+                title: "", 
+                start: "", 
+                course: "none", 
+                type: "deadline",
+                description: "",
+                photoUrl: "",
+                linkAttachments: []
+                });
+                setIsModalOpen(true);
+              }}
+              className="bg-blue-600 hover:bg-blue-700"
+              size="lg"
+              >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Event
+              </Button>
+            </div>
+          )}
+
           <Card className="p-6 mb-6">
             <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
               <div className="flex-1">
@@ -264,7 +367,7 @@ const Timeline = () => {
                 </Select>
               </div>
 
-              <div className="flex gap-4 text-sm">
+              <div className="flex gap-4 text-sm flex-wrap">
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded" style={{ backgroundColor: "hsl(0 84% 60%)" }} />
                   <span>Deadline</span>
@@ -276,6 +379,10 @@ const Timeline = () => {
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded" style={{ backgroundColor: "hsl(31 92% 57%)" }} />
                   <span>Assessment</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded" style={{ backgroundColor: "hsl(120 60% 50%)" }} />
+                  <span>Highlight</span>
                 </div>
               </div>
             </div>
@@ -292,24 +399,159 @@ const Timeline = () => {
                 }}
                 height="auto"
                 eventClick={(info) => {
-                  alert(`Event: ${info.event.title}\nCourse: ${info.event.extendedProps.course}`);
+                  const event: CourseEvent = {
+                    id: info.event.id,
+                    title: info.event.title,
+                    start: info.event.startStr,
+                    course: info.event.extendedProps.course,
+                    type: info.event.extendedProps.type,
+                    description: info.event.extendedProps.description,
+                    photoUrl: info.event.extendedProps.photoUrl,
+                    linkAttachments: info.event.extendedProps.linkAttachments,
+                  };
+                  setViewingEvent(event);
                 }}
-                dateClick={isAssistant ? handleDateClick : undefined}
-                selectable={isAssistant}
+                dateClick={canManageEvents ? handleDateClick : undefined}
+                selectable={canManageEvents}
               />
             </div>
           </Card>
 
-          <div className="text-sm text-muted-foreground text-center">
+            <div className="text-sm text-muted-foreground text-center">
             <p>Click on any event to view more details</p>
-            {isAssistant && <p>Click on any date to add a new event</p>}
+            {canManageEvents && <p>Click on any date to add a new event</p>}
           </div>
 
-          {isAssistant && (
+          {/* Event View Modal */}
+          <Dialog open={!!viewingEvent} onOpenChange={(open) => !open && setViewingEvent(null)}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <CalendarIcon className="h-5 w-5" />
+                  Event Details
+                </DialogTitle>
+              </DialogHeader>
+              {viewingEvent && (
+                <div className="space-y-4">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="text-lg font-semibold">{viewingEvent.title}</h3>
+                          <p className="text-sm text-muted-foreground">{viewingEvent.course}</p>
+                        </div>
+                        
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <CalendarIcon className="h-4 w-4" />
+                            <span className="text-sm">{new Date(viewingEvent.start).toLocaleDateString('en-US', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}</span>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
+                            viewingEvent.type === 'deadline' ? 'bg-red-100 text-red-800' :
+                            viewingEvent.type === 'release' ? 'bg-blue-100 text-blue-800' :
+                            viewingEvent.type === 'assessment' ? 'bg-orange-100 text-orange-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {viewingEvent.type.charAt(0).toUpperCase() + viewingEvent.type.slice(1)}
+                          </span>
+                        </div>
+                        
+                        {/* Highlight-specific content */}
+                        {viewingEvent.type === 'highlight' && (
+                          <>
+                            {viewingEvent.description && (
+                              <div>
+                                <h4 className="font-medium text-sm mb-2">Description</h4>
+                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                  {viewingEvent.description}
+                                </p>
+                              </div>
+                            )}
+                            
+                            {viewingEvent.photoUrl && (
+                              <div>
+                                <h4 className="font-medium text-sm mb-2">Photo</h4>
+                                <img 
+                                  src={viewingEvent.photoUrl} 
+                                  alt="Event photo" 
+                                  className="w-full max-w-md rounded-lg border"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                            )}
+                            
+                            {viewingEvent.linkAttachments && viewingEvent.linkAttachments.length > 0 && (
+                              <div>
+                                <h4 className="font-medium text-sm mb-2">Links</h4>
+                                <div className="space-y-2">
+                                  {viewingEvent.linkAttachments.map((link, index) => (
+                                    <a 
+                                      key={index}
+                                      href={link.url} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                                    >
+                                      <span>🔗</span>
+                                      {link.title}
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  {canManageEvents && (
+                    <DialogFooter className="flex gap-2">
+                      <Button variant="outline" onClick={() => setViewingEvent(null)}>
+                        Close
+                      </Button>
+                      <Button 
+                        onClick={() => {
+                          handleEditEvent(viewingEvent);
+                          setViewingEvent(null);
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit Event
+                      </Button>
+                    </DialogFooter>
+                  )}
+                  
+                  {!canManageEvents && (
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setViewingEvent(null)}>
+                        Close
+                      </Button>
+                    </DialogFooter>
+                  )}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {canManageEvents && (
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-              <DialogContent>
+              <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Add New Calendar Event</DialogTitle>
+                  <DialogTitle>
+                    {editingEvent ? 'Edit Calendar Event' : 'Add New Calendar Event'}
+                  </DialogTitle>
                   <DialogDescription>
                     This event will be visible to all students.
                   </DialogDescription>
@@ -328,7 +570,9 @@ const Timeline = () => {
                     <Label htmlFor="date" className="text-right">Date</Label>
                     <Input 
                       id="date" 
-                      type="date" 
+                      type="date"
+                      min={new Date().toISOString().split("T")[0]}
+                      max="3020-12-31"
                       value={newEvent.start} 
                       onChange={(e) => setNewEvent({...newEvent, start: e.target.value})} 
                       className="col-span-3" 
@@ -344,7 +588,7 @@ const Timeline = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {courses.filter(c => c.code !== 'all').map((course) => (
+                        {eventCourses.map((course) => (
                           <SelectItem key={course.code} value={course.code}>
                             {course.name}
                           </SelectItem>
@@ -356,7 +600,7 @@ const Timeline = () => {
                     <Label htmlFor="type" className="text-right">Type</Label>
                     <Select 
                       value={newEvent.type} 
-                      onValueChange={(val) => setNewEvent({...newEvent, type: val as "deadline" | "release" | "assessment"})}
+                      onValueChange={(val) => setNewEvent({...newEvent, type: val as "deadline" | "release" | "assessment" | "highlight"})}
                     >
                       <SelectTrigger className="col-span-3">
                         <SelectValue />
@@ -365,21 +609,102 @@ const Timeline = () => {
                         <SelectItem value="deadline">Deadline</SelectItem>
                         <SelectItem value="release">Release</SelectItem>
                         <SelectItem value="assessment">Assessment</SelectItem>
+                        <SelectItem value="highlight">Highlight</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+                  
+                  {/* Highlight-specific fields */}
+                  {newEvent.type === "highlight" && (
+                    <>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="description" className="text-right">Description</Label>
+                        <textarea 
+                          id="description" 
+                          value={newEvent.description || ""} 
+                          onChange={(e) => setNewEvent({...newEvent, description: e.target.value})} 
+                          className="col-span-3 flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          placeholder="Describe the highlight event..."
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-4 items-start gap-4">
+                        <Label className="text-right pt-2">Photo</Label>
+                        <div className="col-span-3">
+                          <PhotoUpload
+                            currentPhotoUrl={newEvent.photoUrl || ""}
+                            onPhotoChange={(photoUrl) => setNewEvent({...newEvent, photoUrl})}
+                            disabled={isSubmitting}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-4 items-start gap-4">
+                        <Label className="text-right pt-2">Link Attachments</Label>
+                        <div className="col-span-3 space-y-2">
+                          {newEvent.linkAttachments?.map((link, index) => (
+                            <div key={index} className="flex gap-2">
+                              <Input 
+                                value={link.title} 
+                                onChange={(e) => {
+                                  const updated = [...(newEvent.linkAttachments || [])];
+                                  updated[index] = { ...updated[index], title: e.target.value };
+                                  setNewEvent({...newEvent, linkAttachments: updated});
+                                }} 
+                                placeholder="Link title"
+                                className="flex-1"
+                              />
+                              <Input 
+                                value={link.url} 
+                                onChange={(e) => {
+                                  const updated = [...(newEvent.linkAttachments || [])];
+                                  updated[index] = { ...updated[index], url: e.target.value };
+                                  setNewEvent({...newEvent, linkAttachments: updated});
+                                }} 
+                                placeholder="https://example.com"
+                                className="flex-1"
+                              />
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => {
+                                  const updated = newEvent.linkAttachments?.filter((_, i) => i !== index) || [];
+                                  setNewEvent({...newEvent, linkAttachments: updated});
+                                }}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          ))}
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              const updated = [...(newEvent.linkAttachments || []), { title: "", url: "" }];
+                              setNewEvent({...newEvent, linkAttachments: updated});
+                            }}
+                          >
+                            Add Link
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <DialogFooter>
                   <Button 
                     variant="outline" 
-                    onClick={() => setIsModalOpen(false)} 
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setEditingEvent(null);
+                    }} 
                     disabled={isSubmitting}
                   >
                     Cancel
                   </Button>
                   <Button onClick={handleAddEvent} disabled={isSubmitting}>
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Save Event
+                    {editingEvent ? 'Update Event' : 'Save Event'}
                   </Button>
                 </DialogFooter>
               </DialogContent>

@@ -4,16 +4,19 @@ import { Menu, X, Beaker } from "lucide-react";
 import { useState } from "react";
 import { AuthUserButton } from "@/components/auth/AuthComponents";
 import { useUser } from "@clerk/clerk-react";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const { user } = useUser();
+  const { user: dbUser, isAdmin, isAssistant } = useUserProfile();
 
   const navItems = [
     { path: "/", label: "Home" },
     { path: "/timeline", label: "Timeline" },
     { path: "/virtual-lab", label: "Virtual Lab", requireAuth: true }, // Only show when logged in
+    { path: "/profile", label: "Profile", requireAuth: true }, // Profile page
     // { path: "/whiteboard", label: "Whiteboard" },
     { path: "/assistant", label: "Assistant", requireRole: 'assistant' },
     { path: "/admin", label: "Admin", requireRole: 'admin' },
@@ -27,8 +30,11 @@ const Navbar = () => {
     
     if (!item.requireRole) return true;
     
-    const userRole = user?.publicMetadata?.role as string;
-    return userRole === item.requireRole || userRole === 'admin';
+    // Use database user role instead of Clerk metadata
+    if (item.requireRole === 'admin') return isAdmin;
+    if (item.requireRole === 'assistant') return isAssistant;
+    
+    return false;
   });
 
   return (
