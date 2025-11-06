@@ -121,4 +121,34 @@ All colors MUST be HSL.
     box-shadow: var(--shadow-card-hover);
     transform: translateY(-2px);
   }
+  
+  /* Responsive utilities */
+  .container-responsive {
+    @apply container mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  .text-responsive {
+    @apply text-sm sm:text-base;
+  }
+  
+  .button-responsive {
+    @apply text-xs sm:text-sm px-2 sm:px-4 py-1 sm:py-2;
+  }
+  
+  /* Mobile-first breakpoints for custom components */
+  @media (max-width: 640px) {
+    .fc .fc-toolbar {
+      flex-direction: column !important;
+      gap: 0.5rem !important;
+    }
+    
+    .fc .fc-toolbar-chunk {
+      justify-content: center !important;
+    }
+    
+    .fc .fc-button-group .fc-button {
+      padding: 0.25rem 0.5rem !important;
+      font-size: 0.75rem !important;
+    }
+  }
 }

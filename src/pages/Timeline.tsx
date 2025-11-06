@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useUser, useAuth } from "@clerk/clerk-react";
+import { useAuth } from "@clerk/clerk-react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
@@ -11,8 +11,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar as CalendarIcon, Loader2, Plus, Edit, Trash2 } from "lucide-react";
-import { useEvents, useCreateEvent, useUpdateEvent, useDeleteEvent } from "@/hooks/use-api";
+import { Calendar as CalendarIcon, Loader2, Plus, Edit, Trash2, Lock } from "lucide-react";
+import { useEvents, useCreateEvent, useUpdateEvent, useDeleteEvent, useTasks } from "@/hooks/use-api";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,18 +47,30 @@ interface CourseEvent {
 }
 
 const Timeline = () => {
-  const { isSignedIn, user } = useUser();
-  const isAssistant = user?.publicMetadata?.role === 'assistant';
-  const isAdmin = user?.publicMetadata?.role === 'admin';
-  const canManageEvents = isSignedIn;
+  const { isSignedIn } = useAuth();
+  const { user, loading: profileLoading } = useUserProfile();
+  
+  const isAssistant = user?.role === 'assistant';
+  const isAdmin = user?.role === 'admin';
+  const isUser = user?.role === 'user';
+  
+  // Everyone can access timeline, but only assistants/admins can manage events
+  const canAccessTimeline = isSignedIn;
+  const canManageEvents = isSignedIn && (isAssistant || isAdmin);
 
   const { toast } = useToast();
 
   const [selectedCourse, setSelectedCourse] = useState<string>("all");
   
-  const { data: apiEvents, isLoading, error } = useEvents(
+  const { data: apiEvents, isLoading: eventsLoading, error: eventsError } = useEvents(
     selectedCourse === "all" ? undefined : selectedCourse
   );
+  
+  // Fetch tasks for assistants and admins
+  const { data: apiTasks, isLoading: tasksLoading, error: tasksError } = useTasks();
+  
+  // Combined loading state
+  const isLoading = eventsLoading || tasksLoading;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,6 +103,7 @@ const Timeline = () => {
 
   const courses = [
     { code: "all", name: "All Courses" },
+    ...(isAssistant || isAdmin ? [{ code: "Tasks", name: "📋 Tasks" }] : []),
     { code: "IF1220", name: "Matematika Diskrit" },
     { code: "IF2120", name: "Probabilitas dan Statistik" },
     { code: "IF2123", name: "Aljabar Linear dan Geometri" },
@@ -102,18 +116,44 @@ const Timeline = () => {
     ...courses.filter(c => c.code !== 'all')
   ];
 
-  // Tampilkan event HANYA jika login dan datanya ada
-  const allEvents: CourseEvent[] = (apiEvents && !error) 
-    ? apiEvents.map(event => ({
-        id: event._id,
-        title: event.title.replace(/^\d+[a-zA-Z]\s+/, ''),
-        start: event.start,
-        course: event.course,
-        type: event.type,
-        description: event.description,
-        photoUrl: event.photoUrl,
-        linkAttachments: event.linkAttachments,
-      })) : [];
+  // Combine events and tasks into calendar items
+  const allCalendarItems: CourseEvent[] = [];
+  
+  // Add events if available
+  if (apiEvents && !eventsError) {
+    const eventItems = apiEvents.map(event => ({
+      id: event._id,
+      title: event.title,
+      start: event.start,
+      course: event.course,
+      type: event.type,
+      description: event.description,
+      photoUrl: event.photoUrl,
+      linkAttachments: event.linkAttachments,
+    }));
+    allCalendarItems.push(...eventItems);
+  }
+  
+  // Add tasks as calendar events for assistants and admins
+  if (apiTasks && !tasksError && (isAssistant || isAdmin)) {
+    const taskItems = apiTasks
+      .filter(task => task.dueDate) // Only tasks with due dates
+      .map(task => ({
+        id: `task-${task._id}`,
+        title: `📋 ${task.title}`,
+        start: task.dueDate!,
+        course: "Tasks", // Use a special course category for tasks
+        type: "deadline" as const,
+        description: task.description || `Task: ${task.title}\nStatus: ${task.status}\nPriority: ${task.priority}`,
+        backgroundColor: task.priority === 'high' ? 'hsl(0, 84%, 60%)' : 
+                        task.priority === 'medium' ? 'hsl(31, 92%, 57%)' : 'hsl(120, 60%, 50%)',
+        borderColor: task.priority === 'high' ? 'hsl(0, 84%, 60%)' : 
+                     task.priority === 'medium' ? 'hsl(31, 92%, 57%)' : 'hsl(120, 60%, 50%)',
+      }));
+    allCalendarItems.push(...taskItems);
+  }
+  
+  const allEvents = allCalendarItems;
 
   const getEventColor = (type: string) => {
     switch (type) {
@@ -292,6 +332,38 @@ const Timeline = () => {
     }
   };
 
+  // Show access control for users without permission
+  if (!isSignedIn) {
+    return (
+      <div className="min-h-screen py-12">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl mx-auto text-center">
+            <Lock className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+            <h1 className="text-3xl font-bold mb-4">Access Required</h1>
+            <p className="text-muted-foreground mb-6">
+              Please sign in to access the academic timeline.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen py-12">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <span className="ml-2">Loading profile...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No access restriction needed - everyone can view timeline
+
   return (
     <div className="min-h-screen py-12">
       <div className="container mx-auto px-4">
@@ -300,24 +372,31 @@ const Timeline = () => {
           {isLoading && (
             <div className="flex items-center justify-center min-h-[50vh]">
               <Loader2 className="h-8 w-8 animate-spin" />
-              <span className="ml-2">Loading events...</span>
+              <span className="ml-2">Loading calendar data...</span>
             </div>
           )}
 
           {/* Error State */}
-          {error && (
+          {(eventsError || tasksError) && (
             <Alert className="mb-6">
               <AlertDescription>
-                Failed to load events from API. Showing fallback content.
+                Failed to load some calendar data. 
+                {eventsError && " Events unavailable."}
+                {tasksError && " Tasks unavailable."}
               </AlertDescription>
             </Alert>
           )}
 
           <div className="text-center mb-8">
             <CalendarIcon className="h-12 w-12 mx-auto mb-4 text-primary" />
-            <h1 className="text-4xl font-bold mb-4 text-primary">Academic Calendar</h1>
+            <h1 className="text-4xl font-bold mb-4 text-primary">Academic Calendar & Tasks</h1>
             <p className="text-muted-foreground">
-              Track important dates, deadlines, and assessments for all courses
+              Track important dates, deadlines, assessments, and manage tasks for all courses
+            </p>
+            <p className="text-sm text-primary mt-2">
+              {isAdmin ? 'Administrator Access' : isAssistant ? 'Assistant Access' : 'User Access'} • 
+              {canManageEvents ? 'Full Event Management Available' : 'View Only Access'}
+              {(isAssistant || isAdmin) && ' • Tasks Integration Enabled'}
             </p>
           </div>
 
@@ -347,14 +426,14 @@ const Timeline = () => {
             </div>
           )}
 
-          <Card className="p-6 mb-6">
-            <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
+          <Card className="p-3 sm:p-6 mb-6">
+            <div className="flex flex-col gap-4 mb-6">
               <div className="flex-1">
                 <label className="text-sm font-medium mb-2 block">
                   Filter by Course
                 </label>
                 <Select value={selectedCourse} onValueChange={setSelectedCourse}>
-                  <SelectTrigger className="w-full md:w-64">
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a course" />
                   </SelectTrigger>
                   <SelectContent>
@@ -384,18 +463,55 @@ const Timeline = () => {
                   <div className="w-4 h-4 rounded" style={{ backgroundColor: "hsl(120 60% 50%)" }} />
                   <span>Highlight</span>
                 </div>
+                {(isAssistant || isAdmin) && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-gradient-to-r from-red-500 via-orange-500 to-green-500" />
+                    <span>Tasks (by priority)</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="calendar-container">
+            <div className="calendar-container overflow-x-auto">
+              <style>{`
+                .fc .fc-toolbar {
+                  flex-wrap: wrap;
+                  gap: 0.5rem;
+                }
+                .fc .fc-toolbar-chunk {
+                  display: flex;
+                  align-items: center;
+                  flex-wrap: wrap;
+                  gap: 0.25rem;
+                }
+                @media (max-width: 640px) {
+                  .fc .fc-toolbar {
+                    flex-direction: column;
+                    align-items: center;
+                  }
+                  .fc .fc-toolbar-chunk {
+                    justify-content: center;
+                  }
+                  .fc .fc-button-group .fc-button {
+                    padding: 0.25rem 0.5rem;
+                    font-size: 0.75rem;
+                  }
+                  .fc .fc-daygrid-day-number {
+                    font-size: 0.75rem;
+                  }
+                  .fc .fc-event-title {
+                    font-size: 0.75rem;
+                  }
+                }
+              `}</style>
               <FullCalendar
                 plugins={[dayGridPlugin, interactionPlugin]}
                 initialView="dayGridMonth"
                 events={filteredEvents}
                 headerToolbar={{
-                  left: "prev,next today",
+                  left: "prev,next",
                   center: "title",
-                  right: "dayGridMonth,dayGridWeek",
+                  right: window.innerWidth > 768 ? "dayGridMonth,dayGridWeek" : "today",
                 }}
                 height="auto"
                 eventClick={(info) => {
@@ -424,15 +540,15 @@ const Timeline = () => {
 
           {/* Event View Modal */}
           <Dialog open={!!viewingEvent} onOpenChange={(open) => !open && setViewingEvent(null)}>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-hidden flex flex-col">
+              <DialogHeader className="flex-shrink-0">
                 <DialogTitle className="flex items-center gap-2">
                   <CalendarIcon className="h-5 w-5" />
                   Event Details
                 </DialogTitle>
               </DialogHeader>
               {viewingEvent && (
-                <div className="space-y-4">
+                <div className="space-y-4 overflow-y-auto flex-1 pr-2">
                   <Card>
                     <CardContent className="pt-6">
                       <div className="space-y-4">

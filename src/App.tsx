@@ -26,6 +26,7 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const isWhiteboardPage = location.pathname === '/whiteboard';
   const { isSignedIn, user } = useUser();
   const { user: dbUser, loading: profileLoading } = useUserProfile();
@@ -33,6 +34,37 @@ const AppContent = () => {
   
   // Initialize global error handler
   useGlobalErrorHandler();
+
+  useEffect(() => {
+    const handleRoleChange = (event: CustomEvent) => {
+      const { from, to } = event.detail;
+      console.log('Role changed in App:', from, 'to', to);
+      
+      const currentPath = location.pathname;
+      
+      if (currentPath === '/admin' && to !== 'admin') {
+        navigate('/');
+        toast({
+          title: "Access Revoked",
+          description: "Your admin access has been revoked. Redirecting to home.",
+          variant: "destructive",
+        });
+      } else if (currentPath === '/assistant' && to === 'user') {
+        navigate('/');
+        toast({
+          title: "Access Revoked",
+          description: "Your assistant access has been revoked. Redirecting to home.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    window.addEventListener('roleChanged', handleRoleChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('roleChanged', handleRoleChange as EventListener);
+    };
+  }, [location.pathname, navigate, toast]);
 
   useEffect(() => {
     if (isSignedIn && user && dbUser && !profileLoading) {

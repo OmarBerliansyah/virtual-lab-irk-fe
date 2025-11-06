@@ -9,6 +9,7 @@ export interface User {
 }
 
 export interface ProfileUser {
+  profilePicture: string;
   id: string;
   clerkId: string;
   email: string;

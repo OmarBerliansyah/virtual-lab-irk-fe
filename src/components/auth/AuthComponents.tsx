@@ -104,27 +104,11 @@ export function AuthWrapper({ children, requireRole }: AuthWrapperProps) {
     );
   }
 
-  // Check role if required
   if (requireRole && dbUser) {
     const hasAccess = requireRole === 'admin' ? isAdmin : (isAdmin || isAssistant);
     
     if (!hasAccess) {
-      return (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center space-y-4">
-            <h2 className="text-2xl font-bold">Access Denied</h2>
-            <p className="text-muted-foreground">
-              You need {requireRole} permissions to access this area.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Current role: {dbUser.role}
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">
-              Email: {dbUser.email}
-            </p>
-          </div>
-        </div>
-      );
+      return null;
     }
   }
 

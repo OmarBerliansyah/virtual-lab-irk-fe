@@ -153,22 +153,43 @@ const PathfindingSimulation = () => {
     const updateCanvasSize = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        const maxWidth = Math.min(rect.width - 32, 1200); // 16px padding each side, max 1200px
-        const height = Math.max(400, Math.min(600, maxWidth * 0.6)); // Aspect ratio with bounds
+        const availableWidth = Math.max(300, rect.width - 16); // Minimum 300px, with 8px padding each side
+        const maxWidth = Math.min(availableWidth, 1200); // Max 1200px
+        const height = Math.max(300, Math.min(600, maxWidth * 0.6)); // Aspect ratio with bounds, min 300px
         setCanvasSize({ width: maxWidth, height });
       }
     };
 
-    updateCanvasSize();
+    // Add a small delay to ensure container is properly rendered
+    const timeoutId = setTimeout(updateCanvasSize, 100);
+    
     window.addEventListener('resize', updateCanvasSize);
-    return () => window.removeEventListener('resize', updateCanvasSize);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', updateCanvasSize);
+    };
   }, []);
 
   // Update canvas dimensions when size changes
   useEffect(() => {
     if (canvasRef.current) {
-      canvasRef.current.width = canvasSize.width;
-      canvasRef.current.height = canvasSize.height;
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d");
+      
+      // Set actual canvas size
+      canvas.width = canvasSize.width;
+      canvas.height = canvasSize.height;
+      
+      // Scale for high DPI displays
+      const dpr = window.devicePixelRatio || 1;
+      if (dpr !== 1) {
+        canvas.width = canvasSize.width * dpr;
+        canvas.height = canvasSize.height * dpr;
+        
+        if (ctx) {
+          ctx.scale(dpr, dpr);
+        }
+      }
     }
   }, [canvasSize]);
 
@@ -267,11 +288,14 @@ const PathfindingSimulation = () => {
 
   const getCanvasCoords = (e: MouseEvent): { x: number, y: number } => {
     if (!canvasRef.current) return { x: 0, y: 0 };
-    const rect = canvasRef.current.getBoundingClientRect();
-    return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    
+    // Get coordinates relative to the displayed canvas size
+    const x = (e.clientX - rect.left) * (canvasSize.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvasSize.height / rect.height);
+    
+    return { x, y };
   };
 
   const handleMouseDown = (e: MouseEvent<HTMLCanvasElement>) => {
@@ -788,32 +812,33 @@ const PathfindingSimulation = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-4 items-center">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4 items-start sm:items-center">
         <ToggleGroup 
           type="single" 
           value={mode} 
           onValueChange={(val: Mode) => val && setMode(val)}
           disabled={isVisualizing}
+          className="flex-wrap"
         >
-          <ToggleGroupItem value="addNode" aria-label="Add Node">
-            <Circle className="mr-2 h-4 w-4" /> Add Node
+          <ToggleGroupItem value="addNode" aria-label="Add Node" className="text-xs sm:text-sm">
+            <Circle className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Node
           </ToggleGroupItem>
-          <ToggleGroupItem value="addEdge" aria-label="Add Edge">
-            <Move className="mr-2 h-4 w-4" /> Add Edge
+          <ToggleGroupItem value="addEdge" aria-label="Add Edge" className="text-xs sm:text-sm">
+            <Move className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Edge
           </ToggleGroupItem>
-          <ToggleGroupItem value="setStart" aria-label="Set Start">
-            <MapPin className="mr-2 h-4 w-4" /> Start
+          <ToggleGroupItem value="setStart" aria-label="Set Start" className="text-xs sm:text-sm">
+            <MapPin className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Start
           </ToggleGroupItem>
           {algorithm !== "tsp" && (
-            <ToggleGroupItem value="setEnd" aria-label="Set End">
-              <Flag className="mr-2 h-4 w-4" /> End
+            <ToggleGroupItem value="setEnd" aria-label="Set End" className="text-xs sm:text-sm">
+              <Flag className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> End
             </ToggleGroupItem>
           )}
-          <ToggleGroupItem value="select" aria-label="Select">
-            <MousePointer className="mr-2 h-4 w-4" /> Select
+          <ToggleGroupItem value="select" aria-label="Select" className="text-xs sm:text-sm">
+            <MousePointer className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Select
           </ToggleGroupItem>
-          <ToggleGroupItem value="edit" aria-label="Edit">
-            <Edit className="mr-2 h-4 w-4" /> Edit
+          <ToggleGroupItem value="edit" aria-label="Edit" className="text-xs sm:text-sm">
+            <Edit className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Edit
           </ToggleGroupItem>
         </ToggleGroup>
         
@@ -822,7 +847,7 @@ const PathfindingSimulation = () => {
           onValueChange={handleAlgorithmChange}
           disabled={isVisualizing}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="Select Algorithm" />
           </SelectTrigger>
           <SelectContent>
@@ -832,14 +857,16 @@ const PathfindingSimulation = () => {
           </SelectContent>
         </Select>
         
-        <Button onClick={startVisualization} disabled={isVisualizing}>
-          <Play className="mr-2 h-4 w-4" />
-          {isVisualizing ? "Visualizing..." : "Visualize"}
-        </Button>
-        <Button onClick={reset} variant="outline" disabled={isVisualizing}>
-          <RotateCcw className="mr-2 h-4 w-4" />
-          Reset
-        </Button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button onClick={startVisualization} disabled={isVisualizing} className="flex-1 sm:flex-none text-xs sm:text-sm">
+            <Play className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+            {isVisualizing ? "Visualizing..." : "Visualize"}
+          </Button>
+          <Button onClick={reset} variant="outline" disabled={isVisualizing} className="flex-1 sm:flex-none text-xs sm:text-sm">
+            <RotateCcw className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+            Reset
+          </Button>
+        </div>
         
         {(selectedNodes.size > 0 || selectedEdges.size > 0) && (
           <>
@@ -861,13 +888,13 @@ const PathfindingSimulation = () => {
               <Copy className="mr-2 h-4 w-4" />
               Copy Selected
             </Button>
-            </>
-          )}
+          </>
+        )}
       </div>
       
-      <div ref={containerRef} className="border rounded-lg overflow-hidden bg-muted/50">
+      <div ref={containerRef} className="border rounded-lg overflow-hidden bg-muted/50 w-full">
         <ContextMenu>
-          <ContextMenuTrigger>
+          <ContextMenuTrigger className="block w-full">
             <canvas
               ref={canvasRef}
               width={canvasSize.width}
@@ -875,8 +902,12 @@ const PathfindingSimulation = () => {
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
-              className="w-full cursor-crosshair"
-              style={{ display: 'block' }}
+              className="cursor-crosshair block"
+              style={{ 
+                width: `${canvasSize.width}px`,
+                height: `${canvasSize.height}px`,
+                maxWidth: '100%'
+              }}
             />
           </ContextMenuTrigger>
           <ContextMenuContent>

@@ -50,13 +50,12 @@ const Navbar = () => {
             />
           </Link>
 
-          {/* Desktop Navigation - Centered */}
-          <div className="hidden md:flex items-center space-x-1 absolute left-1/2 transform -translate-x-1/2">
+          <div className="hidden lg:flex items-center space-x-1 absolute left-1/2 transform -translate-x-1/2">
             {filteredNavItems.map((item) => (
               <Link key={item.path} to={item.path}>
                 <Button
                   variant={isActive(item.path) ? "default" : "ghost"}
-                  className="transition-all"
+                  className="transition-all text-sm"
                 >
                   {item.label}
                 </Button>
@@ -68,9 +67,9 @@ const Navbar = () => {
           <div className="flex items-center space-x-2">
             <AuthUserButton />
             
-            {/* Mobile Menu Button */}
+            {/* Mobile Menu Button - Show on tablet and mobile */}
             <button
-              className="md:hidden p-2"
+              className="lg:hidden p-2"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Toggle menu"
             >
@@ -83,9 +82,9 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile/Tablet Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t">
+          <div className="lg:hidden py-4 border-t">
             <div className="flex flex-col space-y-2">
               {filteredNavItems.map((item) => (
                 <Link

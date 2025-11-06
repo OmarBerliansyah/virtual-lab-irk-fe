@@ -36,12 +36,12 @@ export const PhotoUpload = ({ onPhotoChange, currentPhotoUrl, disabled }: PhotoU
       return;
     }
 
-    // Validate file size (5MB limit)
-    if (file.size > 5 * 1024 * 1024) {
+    // Validate file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
       toast({
         variant: "destructive",
         title: "File too large",
-        description: "Please select an image smaller than 5MB",
+        description: "Please select an image smaller than 10MB",
       });
       return;
     }

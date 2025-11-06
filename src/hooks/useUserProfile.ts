@@ -10,6 +10,7 @@ export function useUserProfile() {
   const [user, setUser] = useState<ProfileUser | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previousRole, setPreviousRole] = useState<string | null>(null);
 
   const api = createAuthenticatedApi(getAuthHeaders);
 
@@ -22,6 +23,18 @@ export function useUserProfile() {
     
     try {
       const response = await api.getProfile();
+      
+      if (previousRole && previousRole !== response.user.role) {
+        console.log('Role changed from', previousRole, 'to', response.user.role);
+        window.dispatchEvent(new CustomEvent('roleChanged', { 
+          detail: { 
+            from: previousRole, 
+            to: response.user.role 
+          } 
+        }));
+      }
+      
+      setPreviousRole(response.user.role);
       setUser(response.user);
       console.log('User profile loaded:', response.user);
     } catch (err) {
@@ -31,7 +44,7 @@ export function useUserProfile() {
     } finally {
       setLoading(false);
     }
-  }, [isSignedIn, api]);
+  }, [isSignedIn, api, previousRole]);
 
   // Update user profile
   const updateProfile = async (userData: { email?: string }) => {

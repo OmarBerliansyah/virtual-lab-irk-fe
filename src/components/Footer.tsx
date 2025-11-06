@@ -1,4 +1,4 @@
-import { Beaker, Github, Mail, ExternalLink } from "lucide-react";
+import { Beaker, Github, Mail, ExternalLink, Linkedin, Youtube, Link } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -34,7 +34,7 @@ const Footer = () => {
             <h3 className="font-semibold mb-4">Connect</h3>
             <div className="flex space-x-4">
               <a
-                href="https://github.com"
+                href="https://github.com/IRK-23"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-primary transition-colors"
@@ -45,16 +45,23 @@ const Footer = () => {
               <a
                 href="mailto:lab@university.edu"
                 className="text-muted-foreground hover:text-primary transition-colors"
-                aria-label="Email"
+                aria-label="Linkedin"
               >
-                <Mail className="h-5 w-5" />
+                <Linkedin className="h-5 w-5" />
               </a>
               <a
                 href="https://informatika.stei.itb.ac.id/~rinaldi.munir/"
                 className="text-muted-foreground hover:text-primary transition-colors"
-                aria-label="External Link"
+                aria-label="Link"
               >
-                <ExternalLink className="h-5 w-5" />
+                <Link className="h-5 w-5" />
+              </a>
+              <a
+                href="https://www.youtube.com/results?search_query=Lab+IRK+ITB"
+                className="text-muted-foreground hover:text-primary transition-colors"
+                aria-label="Youtube"
+              >
+                <Youtube className="h-5 w-5" />
               </a>
             </div>
           </div>

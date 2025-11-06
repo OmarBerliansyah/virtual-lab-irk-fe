@@ -1,13 +1,10 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { ListTodo, Calendar } from "lucide-react";
+import { ListTodo } from "lucide-react";
 import TaskTracker from "@/components/assistant/TaskTracker";
-import InteractiveCalendar from "@/components/assistant/InteractiveCalendar";
 import { Toaster } from "@/components/ui/toaster";
 
-// Halaman ini akan menjadi pusat kendali bagi asisten
-// Ini mengasumsikan Anda akan melindungi rute ini
-// menggunakan Clerk <SignedIn> dan pemeriksaan role.
+// Assistant Dashboard - Now only contains Task Tracker
+// Calendar functionality moved to Timeline page with role-based access
 
 const AssistantDashboard = () => {
   return (
@@ -20,31 +17,15 @@ const AssistantDashboard = () => {
                 Assistant Dashboard
               </h1>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                Manage tasks and schedule important lab events.
+                Manage your tasks and track progress. For calendar and events, visit the Timeline page.
               </p>
             </div>
 
             <Card className="p-6">
-              <Tabs defaultValue="tasks" className="w-full">
-                <TabsList className="grid w-full grid-cols-1 md:grid-cols-2 h-auto md:h-10 gap-2 md:gap-0">
-                  <TabsTrigger value="tasks" className="text-sm md:text-base">
-                    <ListTodo className="mr-2 h-4 w-4" />
-                    Task Tracker
-                  </TabsTrigger>
-                  <TabsTrigger value="calendar" className="text-sm md:text-base">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    Event Calendar
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="tasks" className="mt-6">
-                  <TaskTracker />
-                </TabsContent>
-
-                <TabsContent value="calendar" className="mt-6">
-                  <InteractiveCalendar />
-                </TabsContent>
-              </Tabs>
+              <div className="flex items-center gap-2 mb-6">
+                <ListTodo className="h-5 w-5 text-primary" />
+              </div>
+              <TaskTracker />
             </Card>
           </div>
         </div>

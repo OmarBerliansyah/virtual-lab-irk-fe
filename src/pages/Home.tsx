@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, BookOpen, Users, Award, Newspaper, Loader2, ExternalLink } from "lucide-react";
+import { ArrowRight, BookOpen, Users, Award, Newspaper, Loader2, ExternalLink, Edit, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useState } from "react";
@@ -13,127 +13,42 @@ import {
   DialogTrigger 
 } from "@/components/ui/dialog";
 import { useEvents } from "@/hooks/use-api";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { useAssistants } from "@/hooks/useAssistants";
+import { Courses } from "@/lib/data";
 import type { Event } from "@/types/api";
+import AssistantProfileEdit from "@/components/AssistantProfileEdit";
+
 
 const Home = () => {
   // Fetch events from API
   const { data: allEvents, isLoading: eventsLoading, error: eventsError } = useEvents();
   
+  // Get user profile for role-based features
+  const { user, loading: profileLoading } = useUserProfile();
+  
+  // Fetch assistants from API
+  const { data: apiAssistants, isLoading: assistantsLoading, error: assistantsError } = useAssistants(true);
+  
   // Filter highlight events
   const highlightEvents = allEvents?.filter(event => event.type === 'highlight') || [];
 
-  //  data while loading or if API fails
-  const Courses = [
-    { code: "IF1220", name: "Matematika Diskrit" },
-    { code: "IF2120", name: "Probabilitas dan Statistik" },
-    { code: "IF2123", name: "Aljabar Linear dan Geometri" },
-    { code: "IF2211", name: "Strategi Algoritma" },
-    { code: "IF2224", name: "Teori Bahasa Formal dan Otomata" },
-  ];
-
-  // Fallback highlight data when API fails or no highlights available
-  const FallbackHighlights = [
-    {
-      _id: "fallback-1",
-      title: "Tugas Akhir Semester",
-      description: "Lakukan optimasasi algoritma pencarian untuk dataset besar.",
-      photoUrl: "https://images.unsplash.com/photo-1635372722656-389f87a941b7?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1931",
-      start: "2025-10-15",
-      type: "highlight" as const,
-      course: "IF2211",
-      linkAttachments: [],
-    },
-    {
-      _id: "fallback-2", 
-      title: "Paper Published in IEEE Transactions",
-      description: "Latest research on graph algorithms published in top-tier journal.",
-      photoUrl: "https://images.unsplash.com/photo-1532619187608-e5375cab36aa?w=800&q=80",
-      start: "2025-10-10",
-      type: "highlight" as const,
-      course: "IF2211",
-      linkAttachments: [],
-    },
-    {
-      _id: "fallback-3",
-      title: "Virtual Lab Tools Expansion", 
-      description: "New computational tools added to our virtual laboratory platform.",
-      photoUrl: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&q=80",
-      start: "2025-10-05",
-      type: "highlight" as const,
-      course: "IF2211",
-      linkAttachments: [],
-    },
-  ];
-
-  const Assistants = [
-    {
-      name: "Ahmad Naufal (IF'22)",
-      role: "Head Assistant",
-      image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=80",
-    },
-    {
-      name: "Ikhwan Al Hakim (IF'22)",
-      role: "Research Assistant", 
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80",
-    },
-    {
-      name: "Ariel Hefrison (IF'22)",
-      role: "Research Assistant",
-      image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&q=80",
-    },
-    {
-      name: "Farhan Nafis (IF'22)",
-      role: "Teaching Assistant",
-      image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&q=80",
-    },
-    {
-      name: "Haikal Assyauqi (IF'22)",
-      role: "Head Assistant",
-      image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=80",
-    },
-    {
-      name: "Raden Francisco (IF'22)",
-      role: "Research Assistant",
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80",
-    },
-    {
-      name: "Aland Mulia Pratama (IF'22)",
-      role: "Research Assistant",
-      image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&q=80",
-    },
-    {
-      name: "Ahmad Rafi (IF'22)",
-      role: "Teaching Assistant",
-      image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&q=80",
-    },
-    {
-      name: "Eka Prawira (IF'22)",
-      role: "Head Assistant",
-      image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=80",
-    },
-    {
-      name: "Suthasoma Mahardika (IF'22)",
-      role: "Research Assistant",
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80",
-    },
-    {
-      name: "Muhammad Fauzan (IF'22)",
-      role: "Research Assistant",
-      image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&q=80",
-    },
-    {
-      name: "Marvin Scifo (IF'22)",
-      role: "Teaching Assistant",
-      image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&q=80",
-    },
-  ];
-
   const [selectedHighlight, setSelectedHighlight] = useState<Event | null>(null);
+  const [selectedAssistant, setSelectedAssistant] = useState<typeof apiAssistants[0] | null>(null);
 
   const courses = Courses;
   // Use real highlight events or fallback data
-  const highlights = highlightEvents.length > 0 ? highlightEvents : FallbackHighlights;
-  const assistants = Assistants;
+  const highlights = highlightEvents.length > 0 ? highlightEvents : [];
+  
+  // Use API assistants or fallback to hardcoded data
+  const assistants = apiAssistants && apiAssistants.length > 0 ? apiAssistants.map(assistant => ({
+    name: `${assistant.name} (${assistant.angkatan})`,
+    role: assistant.role,
+    image: assistant.image || 'https://media.istockphoto.com/id/1477583639/vector/user-profile-icon-vector-avatar-or-person-icon-profile-picture-portrait-symbol-vector.jpg?s=612x612&w=0&k=20&c=OWGIPPkZIWLPvnQS14ZSyHMoGtVTn1zS8cAgLy1Uh24='
+  })) : [];
+  
+  // Check if user is assistant or admin
+  const canUploadProfilePicture = user?.role === 'assistant' || user?.role === 'admin';
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -317,8 +232,9 @@ const Home = () => {
                         
                         <DialogTrigger asChild>
                           <Button 
-                            variant="link" 
-                            className="mt-4 p-0 h-auto self-start"
+                            variant="outline" 
+                            size="sm"
+                            className="mt-4 self-start bg-primary/5 hover:bg-primary/10 border-primary/20 hover:border-primary/30 text-primary hover:text-primary font-medium transition-all duration-200 shadow-sm hover:shadow-md"
                             onClick={() => setSelectedHighlight(item)}
                           >
                             Read more <ArrowRight className="ml-1 h-4 w-4" />
@@ -330,7 +246,7 @@ const Home = () => {
                 ))}
               </div>
 
-              <DialogContent className="sm:max-w-lg">
+              <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
                 {selectedHighlight && (
                   <>
                     {selectedHighlight.photoUrl ? (
@@ -399,6 +315,8 @@ const Home = () => {
         </div>
       </section>
 
+
+
       {/* Assistants Section */}
       <section className="py-16 bg-background">
         <div className="container mx-auto px-4">
@@ -413,30 +331,96 @@ const Home = () => {
               <h2 className="text-3xl md:text-4xl font-bold text-primary">
                 Our Team
               </h2>
+              {assistantsError && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Loading team from database... (Using fallback data)
+                </p>
+              )}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
-              {assistants.map((assistant, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: index * 0.1 }}
-                >
-                  <Card className="text-center card-elevated p-6">
-                    <div className="relative w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden ring-4 ring-primary/20">
-                      <img
-                        src={assistant.image}
-                        alt={assistant.name}
-                        className="w-full h-full object-cover"
+            
+            {/* Loading State for Assistants */}
+            {assistantsLoading && (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin mr-2" />
+                <span>Loading team members...</span>
+              </div>
+            )}
+
+            {/* Assistants Grid */}
+            {!assistantsLoading && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
+                  {apiAssistants?.map((assistant, index) => (
+                    <motion.div
+                      key={assistant._id || assistant.email + index}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      whileInView={{ opacity: 1, scale: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.4, delay: index * 0.1 }}
+                    >
+                      <Card className="text-center card-elevated p-6 hover:shadow-lg transition-shadow duration-200 cursor-pointer relative group">
+                        <div className="relative w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden ring-4 ring-primary/20">
+                          <img
+                            src={assistant.image}
+                            alt={assistant.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = 'https://media.istockphoto.com/id/1477583639/vector/user-profile-icon-vector-avatar-or-person-icon-profile-picture-portrait-symbol-vector.jpg?s=612x612&w=0&k=20&c=OWGIPPkZIWLPvnQS14ZSyHMoGtVTn1zS8cAgLy1Uh24=';
+                            }}
+                          />
+                          {/* Edit overlay - show for assistants and admins */}
+                          {(user?.role === 'assistant' || user?.role === 'admin') && (
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                              <Button 
+                                size="sm" 
+                                variant="secondary"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setSelectedAssistant(assistant);
+                                }}
+                                className="bg-white/90 hover:bg-white text-primary"
+                              >
+                                <Edit className="h-4 w-4 mr-1" />
+                                Edit
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        <h3 className="font-semibold text-lg mb-1">{assistant.name}</h3>
+                        <p className="text-sm text-muted-foreground mb-2">{assistant.role}</p>
+                        <div className="text-xs text-muted-foreground">
+                          <p>{assistant.nim}</p>
+                          <p>{assistant.angkatan}</p>
+                        </div>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </div>
+                
+                {/* Assistant Edit Dialog */}
+                <Dialog open={!!selectedAssistant} onOpenChange={(open) => !open && setSelectedAssistant(null)}>
+                  <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <User className="h-5 w-5" />
+                        Edit Assistant Profile
+                      </DialogTitle>
+                      <DialogDescription>
+                        Update the assistant's profile information and photo.
+                      </DialogDescription>
+                    </DialogHeader>
+                    {selectedAssistant && (
+                      <AssistantProfileEdit 
+                        assistantData={selectedAssistant}
+                        onUpdateSuccess={() => {
+                          setSelectedAssistant(null);
+                        }}
                       />
-                    </div>
-                    <h3 className="font-semibold text-lg mb-1">{assistant.name}</h3>
-                    <p className="text-sm text-muted-foreground">{assistant.role}</p>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
+                    )}
+                  </DialogContent>
+                </Dialog>
+              </>
+            )}
           </motion.div>
         </div>
       </section>
