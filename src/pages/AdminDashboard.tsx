@@ -84,8 +84,15 @@ const EditUserDialog = ({ user }: { user: UserType }) => {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: ["admin"] });
-          toast({ title: "Success", description: "User updated." });
+          toast({ title: "Success", description: "User updated successfully. Role sync with Clerk in progress." });
           setIsOpen(false);
+          
+          window.dispatchEvent(new CustomEvent('userRoleUpdated', { 
+            detail: { 
+              userId: user._id, 
+              newRole: role 
+            } 
+          }));
         },
         onError: (err) => {
           toast({

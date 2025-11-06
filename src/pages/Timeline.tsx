@@ -12,8 +12,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar as CalendarIcon, Loader2, Plus, Edit, Trash2, Lock } from "lucide-react";
-import { useEvents, useCreateEvent, useUpdateEvent, useDeleteEvent, useTasks } from "@/hooks/use-api";
+import { useEvents, useCreateEvent, useUpdateEvent, useDeleteEvent, useTasks, useDeleteTask } from "@/hooks/use-api";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import type { Task } from "@/types/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,8 +55,7 @@ const Timeline = () => {
   const isAdmin = user?.role === 'admin';
   const isUser = user?.role === 'user';
   
-  // Everyone can access timeline, but only assistants/admins can manage events
-  const canAccessTimeline = isSignedIn;
+  const canAccessTimeline = true;
   const canManageEvents = isSignedIn && (isAssistant || isAdmin);
 
   const { toast } = useToast();
@@ -66,16 +66,21 @@ const Timeline = () => {
     selectedCourse === "all" ? undefined : selectedCourse
   );
   
-  // Fetch tasks for assistants and admins
-  const { data: apiTasks, isLoading: tasksLoading, error: tasksError } = useTasks();
+  const shouldShowTasks = isSignedIn && (isAssistant || isAdmin);
+  const { 
+    data: apiTasks, 
+    isLoading: tasksLoading, 
+    error: tasksError 
+  } = useTasks();
   
   // Combined loading state
-  const isLoading = eventsLoading || tasksLoading;
+  const isLoading = eventsLoading || (shouldShowTasks ? tasksLoading : false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CourseEvent | null>(null);
   const [viewingEvent, setViewingEvent] = useState<CourseEvent | null>(null);
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [newEvent, setNewEvent] = useState<{
     title: string;
     start: string;
@@ -100,10 +105,11 @@ const Timeline = () => {
   const createEventMutation = useCreateEvent();
   const updateEventMutation = useUpdateEvent();
   const deleteEventMutation = useDeleteEvent();
+  const deleteTaskMutation = useDeleteTask();
 
   const courses = [
     { code: "all", name: "All Courses" },
-    ...(isAssistant || isAdmin ? [{ code: "Tasks", name: "📋 Tasks" }] : []),
+    ...(isAssistant || isAdmin ? [{ code: "Tasks", name: "Tasks" }] : []),
     { code: "IF1220", name: "Matematika Diskrit" },
     { code: "IF2120", name: "Probabilitas dan Statistik" },
     { code: "IF2123", name: "Aljabar Linear dan Geometri" },
@@ -123,7 +129,7 @@ const Timeline = () => {
   if (apiEvents && !eventsError) {
     const eventItems = apiEvents.map(event => ({
       id: event._id,
-      title: event.title,
+      title: `[Event] ${event.title}`,
       start: event.start,
       course: event.course,
       type: event.type,
@@ -140,7 +146,7 @@ const Timeline = () => {
       .filter(task => task.dueDate) // Only tasks with due dates
       .map(task => ({
         id: `task-${task._id}`,
-        title: `📋 ${task.title}`,
+        title: `[Task] ${task.title}`,
         start: task.dueDate!,
         course: "Tasks", // Use a special course category for tasks
         type: "deadline" as const,
@@ -225,6 +231,25 @@ const Timeline = () => {
         variant: "destructive", 
         title: "Error", 
         description: "Failed to delete event. Please try again." 
+      });
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+    
+    try {
+      await deleteTaskMutation.mutateAsync(taskId);
+      toast({ 
+        title: "Task Deleted", 
+        description: "Task has been removed successfully." 
+      });
+      setViewingTask(null);
+    } catch (error) {
+      toast({ 
+        variant: "destructive", 
+        title: "Error", 
+        description: "Failed to delete task. Please try again." 
       });
     }
   };
@@ -332,24 +357,9 @@ const Timeline = () => {
     }
   };
 
-  // Show access control for users without permission
-  if (!isSignedIn) {
-    return (
-      <div className="min-h-screen py-12">
-        <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto text-center">
-            <Lock className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-            <h1 className="text-3xl font-bold mb-4">Access Required</h1>
-            <p className="text-muted-foreground mb-6">
-              Please sign in to access the academic timeline.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (profileLoading) {
+  // Timeline is now publicly accessible - no sign-in required for viewing
+  // Only show profile loading for signed-in users
+  if (isSignedIn && profileLoading) {
     return (
       <div className="min-h-screen py-12">
         <div className="container mx-auto px-4">
@@ -377,27 +387,36 @@ const Timeline = () => {
           )}
 
           {/* Error State */}
-          {(eventsError || tasksError) && (
+          {(eventsError || (shouldShowTasks && tasksError)) && (
             <Alert className="mb-6">
               <AlertDescription>
                 Failed to load some calendar data. 
                 {eventsError && " Events unavailable."}
-                {tasksError && " Tasks unavailable."}
+                {shouldShowTasks && tasksError && " Tasks unavailable."}
               </AlertDescription>
             </Alert>
           )}
 
           <div className="text-center mb-8">
             <CalendarIcon className="h-12 w-12 mx-auto mb-4 text-primary" />
-            <h1 className="text-4xl font-bold mb-4 text-primary">Academic Calendar & Tasks</h1>
+            <h1 className="text-4xl font-bold mb-4 text-primary">Academic Calendar{shouldShowTasks ? ' & Tasks' : ''}</h1>
             <p className="text-muted-foreground">
-              Track important dates, deadlines, assessments, and manage tasks for all courses
+              {shouldShowTasks 
+                ? "Track important dates, deadlines, assessments, and manage tasks for all courses"
+                : "View important academic dates, deadlines, and assessments for all courses"
+              }
             </p>
-            <p className="text-sm text-primary mt-2">
-              {isAdmin ? 'Administrator Access' : isAssistant ? 'Assistant Access' : 'User Access'} • 
-              {canManageEvents ? 'Full Event Management Available' : 'View Only Access'}
-              {(isAssistant || isAdmin) && ' • Tasks Integration Enabled'}
-            </p>
+            {isSignedIn ? (
+              <p className="text-sm text-primary mt-2">
+                {isAdmin ? 'Administrator Access' : isAssistant ? 'Assistant Access' : 'User Access'} • 
+                {canManageEvents ? 'Full Event Management Available' : 'View Only Access'}
+                {shouldShowTasks && ' • Tasks Integration Enabled'}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground mt-2">
+                Public View • Sign in for full features and event management
+              </p>
+            )}
           </div>
 
           {/* Event Management Section for Assistants */}
@@ -515,17 +534,28 @@ const Timeline = () => {
                 }}
                 height="auto"
                 eventClick={(info) => {
-                  const event: CourseEvent = {
-                    id: info.event.id,
-                    title: info.event.title,
-                    start: info.event.startStr,
-                    course: info.event.extendedProps.course,
-                    type: info.event.extendedProps.type,
-                    description: info.event.extendedProps.description,
-                    photoUrl: info.event.extendedProps.photoUrl,
-                    linkAttachments: info.event.extendedProps.linkAttachments,
-                  };
-                  setViewingEvent(event);
+                  // Check if this is a task or an event
+                  if (info.event.id.startsWith('task-')) {
+                    // Extract task ID and find the task data
+                    const taskId = info.event.id.replace('task-', '');
+                    const task = apiTasks?.find(t => t._id === taskId);
+                    if (task) {
+                      setViewingTask(task);
+                    }
+                  } else {
+                    // Handle regular events
+                    const event: CourseEvent = {
+                      id: info.event.id,
+                      title: info.event.title,
+                      start: info.event.startStr,
+                      course: info.event.extendedProps.course,
+                      type: info.event.extendedProps.type,
+                      description: info.event.extendedProps.description,
+                      photoUrl: info.event.extendedProps.photoUrl,
+                      linkAttachments: info.event.extendedProps.linkAttachments,
+                    };
+                    setViewingEvent(event);
+                  }
                 }}
                 dateClick={canManageEvents ? handleDateClick : undefined}
                 selectable={canManageEvents}
@@ -637,6 +667,16 @@ const Timeline = () => {
                         Close
                       </Button>
                       <Button 
+                        variant="destructive"
+                        onClick={() => {
+                          handleDeleteEvent(viewingEvent.id);
+                          setViewingEvent(null);
+                        }}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Event
+                      </Button>
+                      <Button 
                         onClick={() => {
                           handleEditEvent(viewingEvent);
                           setViewingEvent(null);
@@ -652,6 +692,121 @@ const Timeline = () => {
                   {!canManageEvents && (
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setViewingEvent(null)}>
+                        Close
+                      </Button>
+                    </DialogFooter>
+                  )}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Task View Modal */}
+          <Dialog open={!!viewingTask} onOpenChange={(open) => !open && setViewingTask(null)}>
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-hidden flex flex-col">
+              <DialogHeader className="flex-shrink-0">
+                <DialogTitle className="flex items-center gap-2">
+                  <CalendarIcon className="h-5 w-5" />
+                  Task Details
+                </DialogTitle>
+              </DialogHeader>
+              {viewingTask && (
+                <div className="space-y-4 overflow-y-auto flex-1 pr-2">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="text-lg font-semibold">{viewingTask.title}</h3>
+                          <p className="text-sm text-muted-foreground">Task</p>
+                        </div>
+                        
+                        <div className="flex items-center gap-4 flex-wrap">
+                          {viewingTask.dueDate && (
+                            <div className="flex items-center gap-2">
+                              <CalendarIcon className="h-4 w-4" />
+                              <span className="text-sm">Due: {new Date(viewingTask.dueDate).toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex gap-2 flex-wrap">
+                          <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
+                            viewingTask.status === 'Done' ? 'bg-green-100 text-green-800' :
+                            viewingTask.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {viewingTask.status}
+                          </span>
+                          
+                          <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
+                            viewingTask.priority === 'high' ? 'bg-red-100 text-red-800' :
+                            viewingTask.priority === 'medium' ? 'bg-orange-100 text-orange-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {viewingTask.priority.charAt(0).toUpperCase() + viewingTask.priority.slice(1)} Priority
+                          </span>
+                        </div>
+                        
+                        {viewingTask.description && (
+                          <div>
+                            <h4 className="font-medium text-sm mb-2">Description</h4>
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                              {viewingTask.description}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {viewingTask.assignee && (
+                          <div>
+                            <h4 className="font-medium text-sm mb-2">Assignee</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {viewingTask.assignee}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {viewingTask.tags && viewingTask.tags.length > 0 && (
+                          <div>
+                            <h4 className="font-medium text-sm mb-2">Tags</h4>
+                            <div className="flex gap-1 flex-wrap">
+                              {viewingTask.tags.map((tag, index) => (
+                                <span 
+                                  key={index}
+                                  className="inline-flex px-2 py-1 rounded-md text-xs bg-gray-100 text-gray-700"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  {canManageEvents && (
+                    <DialogFooter className="flex gap-2">
+                      <Button variant="outline" onClick={() => setViewingTask(null)}>
+                        Close
+                      </Button>
+                      <Button 
+                        variant="destructive"
+                        onClick={() => handleDeleteTask(viewingTask._id)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Task
+                      </Button>
+                    </DialogFooter>
+                  )}
+                  
+                  {!canManageEvents && (
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setViewingTask(null)}>
                         Close
                       </Button>
                     </DialogFooter>

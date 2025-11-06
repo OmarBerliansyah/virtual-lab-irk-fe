@@ -75,6 +75,21 @@ export function useUserProfile() {
     }
   }, [isSignedIn, user, loading, fetchProfile]);
 
+  // Listen for role update events and refresh profile
+  useEffect(() => {
+    const handleRoleUpdate = () => {
+      console.log('User role updated event received, refreshing profile...');
+      if (isSignedIn) {
+        fetchProfile();
+      }
+    };
+
+    window.addEventListener('userRoleUpdated', handleRoleUpdate);
+    return () => {
+      window.removeEventListener('userRoleUpdated', handleRoleUpdate);
+    };
+  }, [isSignedIn, fetchProfile]);
+
   return {
     user,
     loading,
