@@ -46,7 +46,11 @@ export const useAssistants = (activeOnly: boolean = false) => {
       const data = await response.json();
       return data.data as Assistant[];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 10 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: 2,
   });
 };
 

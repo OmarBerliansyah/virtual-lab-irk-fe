@@ -68,12 +68,19 @@ export function useUserProfile() {
     }
   };
 
-  // Auto-fetch profile when signed in
   useEffect(() => {
-    if (isSignedIn && !user && !loading) {
-      fetchProfile();
+    let timeoutId: NodeJS.Timeout;
+    
+    if (isSignedIn && !user && !loading && !error) {
+      timeoutId = setTimeout(() => {
+        fetchProfile();
+      }, 500);
     }
-  }, [isSignedIn, user, loading, fetchProfile]);
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isSignedIn, user, loading, error, fetchProfile]);
 
   // Listen for role update events and refresh profile
   useEffect(() => {
