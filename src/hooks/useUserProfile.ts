@@ -68,14 +68,12 @@ export function useUserProfile() {
     }
   };
 
-  // Auto-fetch profile when signed in
   useEffect(() => {
     if (isSignedIn && !user && !loading) {
       fetchProfile();
     }
   }, [isSignedIn, user, loading, fetchProfile]);
 
-  // Listen for role update events and refresh profile
   useEffect(() => {
     const handleRoleUpdate = () => {
       console.log('User role updated event received, refreshing profile...');
