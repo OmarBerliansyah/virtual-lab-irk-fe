@@ -69,10 +69,18 @@ export function useUserProfile() {
   };
 
   useEffect(() => {
-    if (isSignedIn && !user && !loading) {
-      fetchProfile();
+    let timeoutId: NodeJS.Timeout;
+    
+    if (isSignedIn && !user && !loading && !error) {
+      timeoutId = setTimeout(() => {
+        fetchProfile();
+      }, 500);
     }
-  }, [isSignedIn, user, loading, fetchProfile]);
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isSignedIn, user, loading, error, fetchProfile]);
 
   useEffect(() => {
     const handleRoleUpdate = () => {

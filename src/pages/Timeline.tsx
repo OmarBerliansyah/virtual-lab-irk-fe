@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar as CalendarIcon, Loader2, Plus, Edit, Trash2, Lock } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2, Plus, Edit, Trash2, Lock, ExternalLink } from "lucide-react";
 import { useEvents, useCreateEvent, useUpdateEvent, useDeleteEvent, useTasks, useDeleteTask } from "@/hooks/use-api";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import type { Task } from "@/types/api";
@@ -648,7 +648,7 @@ const Timeline = () => {
                                       rel="noopener noreferrer"
                                       className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline"
                                     >
-                                      <span>🔗</span>
+                                      <ExternalLink className="h-4 w-4 flex-shrink-0" />
                                       {link.title}
                                     </a>
                                   ))}

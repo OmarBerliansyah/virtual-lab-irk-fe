@@ -22,7 +22,22 @@ import { useUser } from "@clerk/clerk-react";
 import { useUserProfile } from "./hooks/useUserProfile";
 import { useToast } from "@/components/ui/use-toast";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchOnMount: false,
+      staleTime: 10 * 60 * 1000,
+      gcTime: 15 * 60 * 1000,
+      retry: 2,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+});
 
 const AppContent = () => {
   const location = useLocation();
@@ -32,7 +47,6 @@ const AppContent = () => {
   const { user: dbUser, loading: profileLoading } = useUserProfile();
   const { toast } = useToast();
   
-  // Initialize global error handler
   useGlobalErrorHandler();
 
   useEffect(() => {
