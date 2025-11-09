@@ -186,26 +186,31 @@ const TaskTracker = () => {
         assignee: newTask.assignee,
         tags: newTask.tags || [],
       }
-    });
+    }, {
+      onSuccess: (updatedApiTask) => {
+        const updatedLocalTask = convertApiTaskToLocal(updatedApiTask);
+        
+        setData(prevData => ({
+          ...prevData,
+          tasks: {
+            ...prevData.tasks,
+            [editingTask.id]: updatedLocalTask
+          }
+        }));
 
-    const updatedTask: Task = {
-      ...editingTask,
-      title: newTask.title!,
-      description: newTask.description || "",
-      priority: newTask.priority as "low" | "medium" | "high",
-      status: newTask.status as "To Do" | "In Progress" | "Done",
-      dueDate: newTask.dueDate,
-      assignee: newTask.assignee,
-      tags: newTask.tags || [],
-    };
-
-    setData(prevData => ({
-      ...prevData,
-      tasks: {
-        ...prevData.tasks,
-        [editingTask.id]: updatedTask
+        toast({
+          title: "Task Updated",
+          description: "Task has been updated successfully",
+        });
+      },
+      onError: (error) => {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to update task. Please try again.",
+        });
       }
-    }));
+    });
 
     setEditingTask(null);
     setNewTask({
@@ -215,11 +220,6 @@ const TaskTracker = () => {
       dueDate: "",
       assignee: "",
       tags: []
-    });
-
-    toast({
-      title: "Task Updated",
-      description: "Task has been updated successfully",
     });
   };
 
@@ -326,9 +326,7 @@ const TaskTracker = () => {
       return;
     }
 
-    const taskId = `task-${Date.now()}`;
-    const task: Task = {
-      id: taskId,
+    createTaskMutation.mutate({
       title: newTask.title,
       description: newTask.description || "",
       priority: newTask.priority as "low" | "medium" | "high",
@@ -336,37 +334,41 @@ const TaskTracker = () => {
       dueDate: newTask.dueDate,
       assignee: newTask.assignee,
       tags: newTask.tags || [],
-      createdAt: new Date().toISOString().split('T')[0]
-    };
+    }, {
+      onSuccess: (createdTask) => {
+        const localTask = convertApiTaskToLocal(createdTask);
+        
+        const newTasks = {
+          ...data.tasks,
+          [localTask.id]: localTask
+        };
 
-    // Create task via API
-    createTaskMutation.mutate({
-      title: task.title,
-      description: task.description,
-      priority: task.priority,
-      status: task.status,
-      dueDate: task.dueDate,
-      assignee: task.assignee,
-      tags: task.tags,
-    });
+        const todoColumn = data.columns["column-1"];
+        const newTodoColumn = {
+          ...todoColumn,
+          taskIds: [...todoColumn.taskIds, localTask.id]
+        };
 
-    const newTasks = {
-      ...data.tasks,
-      [taskId]: task
-    };
+        setData({
+          ...data,
+          tasks: newTasks,
+          columns: {
+            ...data.columns,
+            [newTodoColumn.id]: newTodoColumn
+          }
+        });
 
-    const todoColumn = data.columns["column-1"];
-    const newTodoColumn = {
-      ...todoColumn,
-      taskIds: [...todoColumn.taskIds, taskId]
-    };
-
-    setData({
-      ...data,
-      tasks: newTasks,
-      columns: {
-        ...data.columns,
-        [newTodoColumn.id]: newTodoColumn
+        toast({
+          title: "Task Created",
+          description: "Task has been created successfully",
+        });
+      },
+      onError: (error) => {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to create task. Please try again.",
+        });
       }
     });
 
@@ -387,29 +389,37 @@ const TaskTracker = () => {
   };
 
   const handleDeleteTask = (taskId: string) => {
-    // Delete task via API
-    deleteTaskMutation.mutate(taskId);
+    deleteTaskMutation.mutate(taskId, {
+      onSuccess: () => {
+        const newTasks = { ...data.tasks };
+        delete newTasks[taskId];
 
-    const newTasks = { ...data.tasks };
-    delete newTasks[taskId];
+        const newColumns = { ...data.columns };
+        Object.keys(newColumns).forEach(columnId => {
+          newColumns[columnId] = {
+            ...newColumns[columnId],
+            taskIds: newColumns[columnId].taskIds.filter(id => id !== taskId)
+          };
+        });
 
-    const newColumns = { ...data.columns };
-    Object.keys(newColumns).forEach(columnId => {
-      newColumns[columnId] = {
-        ...newColumns[columnId],
-        taskIds: newColumns[columnId].taskIds.filter(id => id !== taskId)
-      };
-    });
+        setData({
+          ...data,
+          tasks: newTasks,
+          columns: newColumns
+        });
 
-    setData({
-      ...data,
-      tasks: newTasks,
-      columns: newColumns
-    });
-
-    toast({
-      title: "Task Deleted",
-      description: "Task has been removed",
+        toast({
+          title: "Task Deleted",
+          description: "Task has been removed",
+        });
+      },
+      onError: (error) => {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to delete task. Please try again.",
+        });
+      }
     });
   };
 
