@@ -119,7 +119,8 @@ const Timeline = () => {
 
   const eventCourses = [
     { code: "none", name: "None" },
-    ...courses.filter(c => c.code !== 'all')
+    // Exclude the synthetic "Tasks" course from event creation
+    ...courses.filter(c => c.code !== 'all' && c.code !== 'Tasks')
   ];
 
   // Combine events and tasks into calendar items
