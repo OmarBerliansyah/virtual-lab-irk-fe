@@ -141,7 +141,9 @@ export const useUpdateAssistant = () => {
       if (!response.ok) {
         const errorData = await response.json();
         const detailMsg = Array.isArray(errorData.details)
-          ? errorData.details.map((d: any) => `${d.path?.join('.') || 'field'}: ${d.message}`).join('; ')
+          ? (errorData.details as Array<{ path?: (string | number)[]; message?: string }>)
+              .map((d) => `${d.path?.join('.') || 'field'}: ${d.message ?? ''}`)
+              .join('; ')
           : '';
         throw new Error(errorData.message || detailMsg || errorData.error || 'Failed to update assistant');
       }
