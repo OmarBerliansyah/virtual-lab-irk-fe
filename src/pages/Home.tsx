@@ -19,6 +19,8 @@ import { Courses } from "@/lib/data";
 import type { Event } from "@/types/api";
 import AssistantProfileEdit from "@/components/AssistantProfileEdit";
 
+const DEFAULT_PROFILE_IMAGE = "https://media.istockphoto.com/id/1477583639/vector/user-profile-icon-vector-avatar-or-person-icon-profile-picture-portrait-symbol-vector.jpg?s=612x612&w=0&k=20&c=OWGIPPkZIWLPvnQS14ZSyHMoGtVTn1zS8cAgLy1Uh24=";
+
 
 const Home = () => {
   // Fetch events from API
@@ -44,11 +46,11 @@ const Home = () => {
   const assistants = apiAssistants && apiAssistants.length > 0 ? apiAssistants.map(assistant => ({
     name: `${assistant.name} (${assistant.angkatan})`,
     role: assistant.role,
-    image: assistant.image || 'https://media.istockphoto.com/id/1477583639/vector/user-profile-icon-vector-avatar-or-person-icon-profile-picture-portrait-symbol-vector.jpg?s=612x612&w=0&k=20&c=OWGIPPkZIWLPvnQS14ZSyHMoGtVTn1zS8cAgLy1Uh24='
+    image: (assistant.image ?? '').trim() || DEFAULT_PROFILE_IMAGE
   })) : [];
   
   // Check if user is assistant or admin
-  const canUploadProfilePicture = user?.role === 'assistant' || user?.role === 'admin';
+  const canUploadProfilePicture = user?.role === 'ASSISTANT' || user?.role === 'ADMIN';
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -350,7 +352,9 @@ const Home = () => {
             {!assistantsLoading && (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
-                  {apiAssistants?.map((assistant, index) => (
+                  {apiAssistants?.map((assistant, index) => {
+                    const normalizedImage = (assistant.image ?? '').trim() || DEFAULT_PROFILE_IMAGE;
+                    return (
                     <motion.div
                       key={assistant._id || assistant.email + index}
                       initial={{ opacity: 0, scale: 0.9 }}
@@ -361,15 +365,15 @@ const Home = () => {
                       <Card className="text-center card-elevated p-6 hover:shadow-lg transition-shadow duration-200 cursor-pointer relative group">
                         <div className="relative w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden ring-4 ring-primary/20">
                           <img
-                            src={assistant.image}
+                            src={normalizedImage}
                             alt={assistant.name}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              e.currentTarget.src = 'https://media.istockphoto.com/id/1477583639/vector/user-profile-icon-vector-avatar-or-person-icon-profile-picture-portrait-symbol-vector.jpg?s=612x612&w=0&k=20&c=OWGIPPkZIWLPvnQS14ZSyHMoGtVTn1zS8cAgLy1Uh24=';
+                              e.currentTarget.src = DEFAULT_PROFILE_IMAGE;
                             }}
                           />
                           {/* Edit overlay - show for assistants and admins */}
-                          {(user?.role === 'assistant' || user?.role === 'admin') && (
+                          {(user?.role === 'ASSISTANT' || user?.role === 'ADMIN') && (
                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
                               <Button 
                                 size="sm" 
@@ -394,7 +398,7 @@ const Home = () => {
                         </div>
                       </Card>
                     </motion.div>
-                  ))}
+                  );})}
                 </div>
                 
                 {/* Assistant Edit Dialog */}

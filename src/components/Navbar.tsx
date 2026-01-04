@@ -18,8 +18,8 @@ const Navbar = () => {
     { path: "/virtual-lab", label: "Virtual Lab", requireAuth: true }, // Only show when logged in
     { path: "/profile", label: "Profile", requireAuth: true }, // Profile page
     // { path: "/whiteboard", label: "Whiteboard" },
-    { path: "/assistant", label: "Assistant", requireRole: 'assistant' },
-    { path: "/admin", label: "Admin", requireRole: 'admin' },
+    { path: "/assistant", label: "Assistant", requireRole: 'ASSISTANT' },
+    { path: "/admin", label: "Admin", requireRole: 'ADMIN' },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -31,8 +31,8 @@ const Navbar = () => {
     if (!item.requireRole) return true;
     
     // Use database user role instead of Clerk metadata
-    if (item.requireRole === 'admin') return isAdmin;
-    if (item.requireRole === 'assistant') return isAssistant;
+    if (item.requireRole === 'ADMIN') return isAdmin;
+    if (item.requireRole === 'ASSISTANT') return isAssistant;
     
     return false;
   });

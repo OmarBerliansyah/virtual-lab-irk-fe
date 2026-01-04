@@ -7,7 +7,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 
 interface AuthWrapperProps {
   children: React.ReactNode;
-  requireRole?: 'assistant' | 'admin';
+  requireRole?: 'ASSISTANT' | 'ADMIN';
 }
 
 export function AuthWrapper({ children, requireRole }: AuthWrapperProps) {
@@ -20,7 +20,7 @@ export function AuthWrapper({ children, requireRole }: AuthWrapperProps) {
   // Check for access denied and show toast
   useEffect(() => {
     if (requireRole && isSignedIn && dbUser && !profileLoading) {
-      const hasAccess = requireRole === 'admin' ? isAdmin : (isAdmin || isAssistant);
+      const hasAccess = requireRole === 'ADMIN' ? isAdmin : (isAdmin || isAssistant);
       
       if (!hasAccess) {
         toast({
@@ -105,7 +105,7 @@ export function AuthWrapper({ children, requireRole }: AuthWrapperProps) {
   }
 
   if (requireRole && dbUser) {
-    const hasAccess = requireRole === 'admin' ? isAdmin : (isAdmin || isAssistant);
+    const hasAccess = requireRole === 'ADMIN' ? isAdmin : (isAdmin || isAssistant);
     
     if (!hasAccess) {
       return null;

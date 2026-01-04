@@ -56,14 +56,14 @@ const AppContent = () => {
       
       const currentPath = location.pathname;
       
-      if (currentPath === '/admin' && to !== 'admin') {
+      if (currentPath === '/admin' && to !== 'ADMIN') {
         navigate('/');
         toast({
           title: "Access Revoked",
           description: "Your admin access has been revoked. Redirecting to home.",
           variant: "destructive",
         });
-      } else if (currentPath === '/assistant' && to === 'user') {
+      } else if (currentPath === '/assistant' && to === 'USER') {
         navigate('/');
         toast({
           title: "Access Revoked",
@@ -85,8 +85,8 @@ const AppContent = () => {
       const hasShownWelcomeThisSession = sessionStorage.getItem('hasShownWelcome');
       
       if (!hasShownWelcomeThisSession) {
-        const roleText = dbUser.role === 'admin' ? ' (Admin)' : 
-                        dbUser.role === 'assistant' ? ' (Assistant)' : '';
+        const roleText = dbUser.role === 'ADMIN' ? ' (Admin)' : 
+                        dbUser.role === 'ASSISTANT' ? ' (Assistant)' : '';
         
         toast({
           title: "Login Berhasil",
@@ -135,7 +135,7 @@ const AppContent = () => {
           <Route 
             path="/assistant" 
             element={
-              <AuthWrapper requireRole="assistant">
+              <AuthWrapper requireRole="ASSISTANT">
                 <AssistantDashboard />
               </AuthWrapper>
             } 
@@ -145,7 +145,7 @@ const AppContent = () => {
           <Route 
             path="/admin" 
             element={
-              <AuthWrapper requireRole="admin">
+              <AuthWrapper requireRole="ADMIN">
                 <AdminDashboard />
               </AuthWrapper>
             } 

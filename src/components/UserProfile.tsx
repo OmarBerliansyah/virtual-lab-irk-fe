@@ -45,16 +45,16 @@ export function UserProfile() {
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
-      case 'admin': return 'destructive';
-      case 'assistant': return 'default';
+      case 'ADMIN': return 'destructive';
+      case 'ASSISTANT': return 'default';
       default: return 'secondary';
     }
   };
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case 'admin': return <ShieldCheckIcon className="h-4 w-4" />;
-      case 'assistant': return <UserIcon className="h-4 w-4" />;
+      case 'ADMIN': return <ShieldCheckIcon className="h-4 w-4" />;
+      case 'ASSISTANT': return <UserIcon className="h-4 w-4" />;
       default: return <UserIcon className="h-4 w-4" />;
     }
   };

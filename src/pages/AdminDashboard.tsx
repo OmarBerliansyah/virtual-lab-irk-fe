@@ -49,14 +49,14 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 
 const RoleBadge = ({ role }: { role: string }) => {
-  if (role === "admin") {
+  if (role === "ADMIN") {
     return (
       <Badge variant="destructive" className="capitalize">
         Admin
       </Badge>
     );
   }
-  if (role === "assistant") {
+  if (role === "ASSISTANT") {
     return (
       <Badge variant="secondary" className="capitalize">
         Assistant
@@ -83,7 +83,7 @@ const EditUserDialog = ({ user }: { user: UserType }) => {
       { id: user._id, data: { email, role } },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: ["admin"] });
+          queryClient.invalidateQueries({ queryKey: ["ADMIN"] });
           toast({ title: "Success", description: "User updated successfully. Role sync with Clerk in progress." });
           setIsOpen(false);
           
@@ -134,9 +134,9 @@ const EditUserDialog = ({ user }: { user: UserType }) => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="user">User</SelectItem>
-                <SelectItem value="assistant">Assistant</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="USER">User</SelectItem>
+                <SelectItem value="ASSISTANT">Assistant</SelectItem>
+                <SelectItem value="ADMIN">Admin</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -172,7 +172,7 @@ const DeleteUserAlert = ({ userId }: { userId: string }) => {
   const handleDelete = () => {
     deleteUserMutation.mutate(userId, {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["admin"] });
+        queryClient.invalidateQueries({ queryKey: ["ADMIN"] });
         toast({ title: "Success", description: "User deleted." });
       },
       onError: (err) => {

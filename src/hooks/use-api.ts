@@ -3,7 +3,7 @@ import { useAuth } from '@clerk/clerk-react';
 import { createAuthenticatedApi, publicApi } from '@/services/api';
 import { useApiAuth } from './useApiAuth';
 import { useToast } from '@/hooks/use-toast';
-import type { Event, Task, User } from '@/types/api';
+import type { CreateTaskRequest, Event, Task, UpdateTaskRequest, User } from '@/types/api';
 
 // Events API Hooks
 export const useEvents = (course?: string) => {
@@ -117,7 +117,7 @@ export const useCreateTask = () => {
   const { toast } = useToast();
   
   return useMutation({
-    mutationFn: async (task: Omit<Task, '_id' | 'createdAt' | 'updatedAt'>) => {
+    mutationFn: async (task: CreateTaskRequest) => {
       return api.createTask(task);
     },
     onSuccess: () => {
@@ -145,7 +145,7 @@ export const useUpdateTask = () => {
   const { toast } = useToast();
   
   return useMutation({
-    mutationFn: async ({ id, task }: { id: string; task: Partial<Task> }) => {
+    mutationFn: async ({ id, task }: { id: string; task: UpdateTaskRequest }) => {
       return api.updateTask(id, task);
     },
     onSuccess: () => {
@@ -209,7 +209,7 @@ export const useGetUser = () => {
   const api = createAuthenticatedApi(getAuthHeaders);
   
   return useQuery({
-    queryKey: ['admin', 'users'],
+    queryKey: ['ADMIN', 'users'],
     queryFn: async () => {
       return api.getAllUsers();
     },
@@ -221,7 +221,7 @@ export const useGetUserById = (id: string) => {
   const api = createAuthenticatedApi(getAuthHeaders);
   
   return useQuery({
-    queryKey: ['admin', 'user', id],
+    queryKey: ['ADMIN', 'USER', id],
     queryFn: async () => {
       return api.getUserById(id);
     },
@@ -240,7 +240,7 @@ export const useUpdateUser = () => {
       return api.updateUser(id, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin'] });
+      queryClient.invalidateQueries({ queryKey: ['ADMIN'] });
       toast({
         title: "Success",
         description: "User updated successfully",
@@ -267,7 +267,7 @@ export const useDeleteUser = () => {
       return api.deleteUser(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin'] });
+      queryClient.invalidateQueries({ queryKey: ['ADMIN'] });
       toast({
         title: "Success",
         description: "User deleted successfully",

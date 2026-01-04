@@ -121,6 +121,34 @@ All colors MUST be HSL.
     box-shadow: var(--shadow-card-hover);
     transform: translateY(-2px);
   }
+
+  /* Drag and Drop - Prevent flying cards */
+  [data-rfd-draggable-context-id] {
+    transition: none !important;
+  }
+  
+  [data-rfd-draggable-id] {
+    /* Disable all transforms except the one controlled by the library */
+  }
+  
+  [data-rfd-drag-handle-draggable-id] {
+    cursor: grab;
+  }
+  
+  [data-rfd-drag-handle-draggable-id]:active {
+    cursor: grabbing;
+  }
+  
+  /* When dragging, remove hover effects */
+  .dragging-card {
+    transform: none !important;
+    transition: box-shadow 0.2s ease !important;
+  }
+  
+  /* Droppable area styling */
+  [data-rfd-droppable-id] {
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
   
   /* Responsive utilities */
   .container-responsive {

@@ -20,9 +20,11 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { PhotoUpload } from '@/components/ui/photo-upload';
-import { useMyAssistantProfile, useUpdateAssistant } from '@/hooks/useAssistants';
+import { useAssistant, useMyAssistantProfile, useUpdateAssistant } from '@/hooks/useAssistants';
 import { useToast } from '@/hooks/use-toast';
 import { Edit, User, Loader2 } from 'lucide-react';
+
+const DEFAULT_PROFILE_IMAGE = "https://media.istockphoto.com/id/1477583639/vector/user-profile-icon-vector-avatar-or-person-icon-profile-picture-portrait-symbol-vector.jpg?s=612x612&w=0&k=20&c=OWGIPPkZIWLPvnQS14ZSyHMoGtVTn1zS8cAgLy1Uh24=";
 
 interface AssistantData {
   _id?: string;
@@ -37,11 +39,13 @@ interface AssistantData {
 
 interface AssistantProfileEditProps {
   assistantData?: AssistantData;
+  assistantId?: string;
   onUpdateSuccess?: () => void;
 }
 
-const AssistantProfileEdit = ({ assistantData, onUpdateSuccess }: AssistantProfileEditProps) => {
+const AssistantProfileEdit = ({ assistantData, assistantId, onUpdateSuccess }: AssistantProfileEditProps) => {
   const { data: assistantProfile, isLoading, error } = useMyAssistantProfile();
+  const { data: fetchedAssistant, isLoading: isLoadingAssistant, error: fetchAssistantError } = useAssistant(assistantId || '');
   const updateAssistantMutation = useUpdateAssistant();
   const { toast } = useToast();
   
@@ -57,8 +61,8 @@ const AssistantProfileEdit = ({ assistantData, onUpdateSuccess }: AssistantProfi
 
   // If assistantData is provided, we're in "edit any assistant" mode
   // Otherwise, we're in "edit own profile" mode
-  const targetAssistant = assistantData || assistantProfile;
-  const isEditingOther = !!assistantData;
+  const targetAssistant = assistantData || fetchedAssistant || assistantProfile;
+  const isEditingOther = !!assistantData || !!assistantId;
 
   // Initialize form data when profile loads or assistantData changes
   useEffect(() => {
@@ -95,15 +99,36 @@ const AssistantProfileEdit = ({ assistantData, onUpdateSuccess }: AssistantProfi
   const handleSubmit = async () => {
     if (!targetAssistant) return;
 
+    const normalizedImage = (formData.image ?? '').trim();
+
+    if (isEditingOther) {
+      const emailOk = !formData.email || /^\d{8}@std\.stei\.itb\.ac\.id$/.test(formData.email.trim());
+      const nimOk = !formData.nim || /^(135|182)\d{5}$/.test(formData.nim.trim());
+      if (!emailOk || !nimOk) {
+        toast({
+          title: "Invalid data",
+          description: !emailOk ? "Email must be 8 digits followed by @std.stei.itb.ac.id" : "NIM must start with 135 or 182 and have 8 digits total",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     try {
-      await updateAssistantMutation.mutateAsync({
-        id: targetAssistant._id,
-        data: {
-          name: formData.name,
-          role: formData.role,
-          image: formData.image || undefined,
-        },
-      });
+          const payload = {
+            name: formData.name,
+            role: formData.role,
+            image: normalizedImage ? normalizedImage : null,
+            ...(isEditingOther ? {
+              email: formData.email?.trim() || undefined,
+              nim: formData.nim?.trim() || undefined,
+            } : {}),
+          };
+
+          await updateAssistantMutation.mutateAsync({
+            id: targetAssistant._id,
+            data: payload,
+          });
 
       toast({
         title: "Profile updated",
@@ -126,11 +151,11 @@ const AssistantProfileEdit = ({ assistantData, onUpdateSuccess }: AssistantProfi
   };
 
   const roleOptions = [
-    'Assistant',
-    'Head Assistant', 
-    'Research Assistant',
-    'Teaching Assistant',
-    'Lab Assistant'
+    { value: 'ASSISTANT', label: 'Assistant' },
+    { value: 'HEAD_ASSISTANT', label: 'Head Assistant' },
+    { value: 'RESEARCH_ASSISTANT', label: 'Research Assistant' },
+    { value: 'TEACHING_ASSISTANT', label: 'Teaching Assistant' },
+    { value: 'LAB_ASSISTANT', label: 'Lab Assistant' },
   ];
 
   // If we're editing another assistant (assistantData provided), skip the loading/error checks
@@ -148,8 +173,50 @@ const AssistantProfileEdit = ({ assistantData, onUpdateSuccess }: AssistantProfi
       );
     }
 
-    if (error || !assistantProfile) {
-      return null; // User is not an assistant
+    if (error) {
+      return (
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-sm text-red-600">Failed to load assistant profile.</div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (!assistantProfile) {
+      return (
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-sm text-muted-foreground">
+              No assistant profile found. If you are an admin, open this form with a specific assistant selected.
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+  }
+
+  if (isEditingOther && assistantId) {
+    if (isLoadingAssistant) {
+      return (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              <span>Loading assistant...</span>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+    if (fetchAssistantError) {
+      return (
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-sm text-red-600">Failed to load assistant.</div>
+          </CardContent>
+        </Card>
+      );
     }
   }
 
@@ -157,6 +224,16 @@ const AssistantProfileEdit = ({ assistantData, onUpdateSuccess }: AssistantProfi
   if (!targetAssistant) {
     return null;
   }
+
+  // Keep the raw fetched image for the input; use default only for display fallback.
+  const normalizedFormImage = (formData.image ?? '').trim();
+  const normalizedTargetImage = (targetAssistant.image ?? '').trim();
+  const photoInputValue = formData.image === ''
+    ? ''
+    : (normalizedFormImage || normalizedTargetImage);
+  const displayImage = formData.image === ''
+    ? DEFAULT_PROFILE_IMAGE
+    : (normalizedFormImage || normalizedTargetImage || DEFAULT_PROFILE_IMAGE);
 
   // If editing another assistant, render only the form (no card wrapper)
   if (isEditingOther) {
@@ -201,8 +278,8 @@ const AssistantProfileEdit = ({ assistantData, onUpdateSuccess }: AssistantProfi
             </SelectTrigger>
             <SelectContent>
               {roleOptions.map((role) => (
-                <SelectItem key={role} value={role}>
-                  {role}
+                <SelectItem key={role.value} value={role.value}>
+                  {role.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -212,10 +289,21 @@ const AssistantProfileEdit = ({ assistantData, onUpdateSuccess }: AssistantProfi
         <div className="space-y-2">
           <Label>Profile Picture</Label>
           <PhotoUpload
-            currentPhotoUrl={formData.image}
+            currentPhotoUrl={photoInputValue}
             onPhotoChange={(photoUrl) => setFormData({ ...formData, image: photoUrl })}
             disabled={updateAssistantMutation.isPending}
           />
+          {formData.image && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-red-500 h-8"
+              onClick={() => setFormData({ ...formData, image: '' })}
+            >
+              Remove Photo
+            </Button>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 pt-4">
@@ -257,11 +345,11 @@ const AssistantProfileEdit = ({ assistantData, onUpdateSuccess }: AssistantProfi
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
             <img
-              src={targetAssistant.image}
+              src={targetAssistant.image || DEFAULT_PROFILE_IMAGE}
               alt={targetAssistant.name}
               className="w-full h-full object-cover"
               onError={(e) => {
-                e.currentTarget.src = 'https://media.istockphoto.com/id/1477583639/vector/user-profile-icon-vector-avatar-or-person-icon-profile-picture-portrait-symbol-vector.jpg?s=612x612&w=0&k=20&c=OWGIPPkZIWLPvnQS14ZSyHMoGtVTn1zS8cAgLy1Uh24=';
+                e.currentTarget.src = DEFAULT_PROFILE_IMAGE;
               }}
             />
           </div>
@@ -310,8 +398,8 @@ const AssistantProfileEdit = ({ assistantData, onUpdateSuccess }: AssistantProfi
                   </SelectTrigger>
                   <SelectContent>
                     {roleOptions.map((role) => (
-                      <SelectItem key={role} value={role}>
-                        {role}
+                      <SelectItem key={role.value} value={role.value}>
+                        {role.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -322,9 +410,20 @@ const AssistantProfileEdit = ({ assistantData, onUpdateSuccess }: AssistantProfi
                 <Label>Profile Picture</Label>
                 <PhotoUpload
                   onPhotoChange={(url) => setFormData(prev => ({ ...prev, image: url }))}
-                  currentPhotoUrl={formData.image}
+                  currentPhotoUrl={photoInputValue}
                   disabled={updateAssistantMutation.isPending}
                 />
+                {formData.image && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-500 h-8"
+                    onClick={() => setFormData(prev => ({ ...prev, image: '' }))}
+                  >
+                    Remove Photo
+                  </Button>
+                )}
               </div>
             </div>
 

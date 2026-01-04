@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Plus, Calendar, Clock, User, Trash2, Edit, Info, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from "@/hooks/use-api";
+import { useAssistants, type Assistant } from "@/hooks/useAssistants";
 import { Task as ApiTask } from "@/types/api";
 
 interface Task {
@@ -21,6 +23,7 @@ interface Task {
   status: "To Do" | "In Progress" | "Done";
   dueDate?: string;
   assignee?: string;
+  assistantId?: string;
   tags: string[];
   createdAt: string;
 }
@@ -40,6 +43,7 @@ interface TaskBoardData {
 const TaskTracker = () => {
   const { toast } = useToast();
   const { data: apiTasks, isLoading, error } = useTasks();
+  const { data: assistants, isLoading: isLoadingAssistants } = useAssistants();
   const createTaskMutation = useCreateTask();
   const updateTaskMutation = useUpdateTask();
   const deleteTaskMutation = useDeleteTask();
@@ -53,6 +57,7 @@ const TaskTracker = () => {
     status: apiTask.status || "To Do",
     dueDate: apiTask.dueDate,
     assignee: apiTask.assignee,
+    assistantId: apiTask.assistantId,
     tags: apiTask.tags || [],
     createdAt: apiTask.createdAt,
   });
@@ -93,6 +98,7 @@ const TaskTracker = () => {
         status: "To Do",
         dueDate: "2025-11-15",
         assignee: "Assistant",
+        assistantId: "assistant-1",
         tags: ["setup", "backend"],
         createdAt: "2025-11-01"
       },
@@ -124,6 +130,7 @@ const TaskTracker = () => {
     priority: "medium",
     dueDate: "",
     assignee: "",
+    assistantId: "",
     tags: []
   });
 
@@ -136,6 +143,7 @@ const TaskTracker = () => {
         status: editingTask.status,
         dueDate: editingTask.dueDate,
         assignee: editingTask.assignee,
+        assistantId: editingTask.assistantId,
         tags: editingTask.tags
       });
     }
@@ -152,6 +160,17 @@ const TaskTracker = () => {
       });
       return;
     }
+
+    if (!newTask.assistantId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Assignee (Assistant) is required",
+      });
+      return;
+    }
+
+    const selectedAssistantName = getAssistantName(newTask.assistantId) || newTask.assignee || "";
 
     if (newTask.status === "Done" && editingTask.dueDate) {
       const dueDate = new Date(editingTask.dueDate);
@@ -183,7 +202,8 @@ const TaskTracker = () => {
         priority: newTask.priority as "low" | "medium" | "high",
         status: newTask.status as "To Do" | "In Progress" | "Done",
         dueDate: newTask.dueDate,
-        assignee: newTask.assignee,
+        assignee: selectedAssistantName,
+        assistantId: newTask.assistantId,
         tags: newTask.tags || [],
       }
     }, {
@@ -219,6 +239,7 @@ const TaskTracker = () => {
       priority: "medium",
       dueDate: "",
       assignee: "",
+      assistantId: "",
       tags: []
     });
   };
@@ -275,39 +296,46 @@ const TaskTracker = () => {
       taskIds: finishTaskIds
     };
 
-    // Update local state first
-    setData({
-      ...data,
+    const task = data.tasks[draggableId];
+    const newStatus = finish.title as "To Do" | "In Progress" | "Done";
+
+    // 1. UPDATE STATE LOKAL SEKALIGUS (Atomic Update)
+    // Kita update posisi kolom DAN status task dalam satu kali setData
+    // agar React merender UI yang konsisten dalam satu frame.
+    setData((prevData) => ({
+      ...prevData,
       columns: {
-        ...data.columns,
+        ...prevData.columns,
         [newStart.id]: newStart,
         [newFinish.id]: newFinish
+      },
+      tasks: {
+        ...prevData.tasks,
+        [draggableId]: {
+          ...task,
+          status: newStatus // Update status langsung di sini
+        }
       }
-    });
+    }));
 
-    // Update task status via API
-    const task = data.tasks[draggableId];
+    // 2. Update via API (Optimistic Update sudah dilakukan di atas)
     if (task) {
-      const newStatus = finish.title as "To Do" | "In Progress" | "Done";
       updateTaskMutation.mutate({
         id: task.id,
         task: {
           ...task,
           status: newStatus
         }
-      });
-
-      // Update task in local state
-      setData(prevData => ({
-        ...prevData,
-        tasks: {
-          ...prevData.tasks,
-          [draggableId]: {
-            ...task,
-            status: newStatus
-          }
+      }, {
+        onError: () => {
+          // Opsional: Revert state jika API gagal (Rollback logic bisa ditambahkan disini)
+          toast({
+            variant: "destructive",
+            title: "Update Failed",
+            description: "Failed to move task.",
+          });
         }
-      }));
+      });
     }
 
     toast({
@@ -326,13 +354,25 @@ const TaskTracker = () => {
       return;
     }
 
+    if (!newTask.assistantId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Assignee (Assistant) is required",
+      });
+      return;
+    }
+
+    const selectedAssistantName = getAssistantName(newTask.assistantId) || newTask.assignee || "";
+
     createTaskMutation.mutate({
       title: newTask.title,
       description: newTask.description || "",
       priority: newTask.priority as "low" | "medium" | "high",
       status: "To Do",
       dueDate: newTask.dueDate,
-      assignee: newTask.assignee,
+      assignee: selectedAssistantName,
+      assistantId: newTask.assistantId!,
       tags: newTask.tags || [],
     }, {
       onSuccess: (createdTask) => {
@@ -378,6 +418,7 @@ const TaskTracker = () => {
       priority: "medium",
       dueDate: "",
       assignee: "",
+      assistantId: "",
       tags: []
     });
     setIsAddingTask(false);
@@ -421,6 +462,12 @@ const TaskTracker = () => {
         });
       }
     });
+  };
+
+  const getAssistantName = (id?: string) => {
+    if (!id || !Array.isArray(assistants)) return "";
+    const found = assistants.find((assistant: Assistant) => assistant._id === id);
+    return found?.name ?? "";
   };
 
   const getPriorityColor = (priority: string) => {
@@ -514,13 +561,29 @@ const TaskTracker = () => {
                 </div>
               </div>
               <div>
-                <Label htmlFor="assignee">Assignee</Label>
-                <Input
-                  id="assignee"
-                  value={newTask.assignee || ""}
-                  onChange={(e) => setNewTask({ ...newTask, assignee: e.target.value })}
-                  placeholder="Assign to"
-                />
+                <Label htmlFor="assignee">Assignee <span className="text-red-500">*</span></Label>
+                <Select
+                  value={newTask.assistantId || ""}
+                  onValueChange={(value) => {
+                    const name = getAssistantName(value);
+                    setNewTask({ ...newTask, assistantId: value, assignee: name });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Assistant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingAssistants ? (
+                      <div className="p-2 flex justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>
+                    ) : (
+                      assistants?.map((assistant: Assistant) => (
+                        <SelectItem key={assistant._id} value={assistant._id}>
+                          {assistant.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <DialogFooter>
@@ -551,9 +614,9 @@ const TaskTracker = () => {
                     <div
                       {...provided.droppableProps}
                       ref={provided.innerRef}
-                      className={`min-h-[250px] md:min-h-[300px] p-3 rounded-lg border-2 border-dashed transition-all duration-200 ${
+                      className={`min-h-[250px] md:min-h-[300px] p-3 rounded-lg border-2 border-dashed ${
                         snapshot.isDraggingOver 
-                          ? "border-primary bg-primary/5 scale-[1.02]" 
+                          ? "border-primary bg-primary/5" 
                           : "border-muted-foreground/20 hover:border-muted-foreground/30"
                       }`}
                     >
@@ -679,6 +742,7 @@ const TaskTracker = () => {
             priority: "medium",
             dueDate: "",
             assignee: "",
+            assistantId: "",
             tags: []
           });
         }
@@ -749,15 +813,32 @@ const TaskTracker = () => {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-assignee" className="text-right">
-                Assignee {newTask.priority === "high" && <span className="text-red-500">*</span>}
+                Assignee <span className="text-red-500">*</span>
               </Label>
-              <Input
-                id="edit-assignee"
-                value={newTask.assignee || editingTask?.assignee || ""}
-                onChange={(e) => setNewTask({ ...newTask, assignee: e.target.value })}
-                className="col-span-3"
-                placeholder="Assignee name..."
-              />
+              <div className="col-span-3">
+                <Select
+                  value={newTask.assistantId || editingTask?.assistantId || ""}
+                  onValueChange={(value) => {
+                    const name = getAssistantName(value);
+                    setNewTask({ ...newTask, assistantId: value, assignee: name });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Assistant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingAssistants ? (
+                      <div className="p-2 flex justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>
+                    ) : (
+                      assistants?.map((assistant: Assistant) => (
+                        <SelectItem key={assistant._id} value={assistant._id}>
+                          {assistant.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <DialogFooter>

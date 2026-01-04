@@ -3,7 +3,7 @@ export interface User {
   _id: string;
   clerkId: string;
   email: string;
-  role: 'user' | 'assistant' | 'admin';
+  role: 'USER' | 'ASSISTANT' | 'ADMIN';
   createdAt: string;
   updatedAt: string;
 }
@@ -13,7 +13,7 @@ export interface ProfileUser {
   id: string;
   clerkId: string;
   email: string;
-  role: 'user' | 'assistant' | 'admin';
+  role: 'USER' | 'ASSISTANT' | 'ADMIN';
   createdAt: string;
   updatedAt: string;
 }
@@ -43,6 +43,7 @@ export interface Task {
   status: 'To Do' | 'In Progress' | 'Done';
   dueDate?: string;
   assignee?: string;
+  assistantId?: string;
   tags: string[];
   createdAt: string;
   updatedAt: string;
@@ -56,6 +57,7 @@ export interface CreateTaskRequest {
   status?: 'To Do' | 'In Progress' | 'Done';
   dueDate?: string;
   assignee?: string;
+  assistantId: string;
   tags?: string[];
 }
 

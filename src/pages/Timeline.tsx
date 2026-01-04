@@ -51,9 +51,9 @@ const Timeline = () => {
   const { isSignedIn } = useAuth();
   const { user, loading: profileLoading } = useUserProfile();
   
-  const isAssistant = user?.role === 'assistant';
-  const isAdmin = user?.role === 'admin';
-  const isUser = user?.role === 'user';
+  const isAssistant = user?.role === 'ASSISTANT';
+  const isAdmin = user?.role === 'ADMIN';
+  const isUser = user?.role === 'USER';
   
   const canAccessTimeline = true;
   const canManageEvents = isSignedIn && (isAssistant || isAdmin);
