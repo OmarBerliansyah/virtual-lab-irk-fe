@@ -80,7 +80,7 @@ const EditUserDialog = ({ user }: { user: UserType }) => {
 
   const handleSave = () => {
     updateUserMutation.mutate(
-      { id: user._id, data: { email, role } },
+      { id: user._id, data: { email, role, version: user.version ?? 0 } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: ["ADMIN"] });

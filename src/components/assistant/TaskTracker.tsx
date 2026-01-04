@@ -26,6 +26,7 @@ interface Task {
   assistantId?: string;
   tags: string[];
   createdAt: string;
+  version?: number;
 }
 
 interface Column {
@@ -60,6 +61,7 @@ const TaskTracker = () => {
     assistantId: apiTask.assistantId,
     tags: apiTask.tags || [],
     createdAt: apiTask.createdAt,
+    version: apiTask.version,
   });
 
   // Initialize task board data from API
@@ -205,6 +207,7 @@ const TaskTracker = () => {
         assignee: selectedAssistantName,
         assistantId: newTask.assistantId,
         tags: newTask.tags || [],
+        version: editingTask.version ?? 0,
       }
     }, {
       onSuccess: (updatedApiTask) => {
@@ -324,7 +327,8 @@ const TaskTracker = () => {
         id: task.id,
         task: {
           ...task,
-          status: newStatus
+          status: newStatus,
+          version: task.version ?? 0,
         }
       }, {
         onError: () => {

@@ -3,7 +3,7 @@ import { useAuth } from '@clerk/clerk-react';
 import { createAuthenticatedApi, publicApi } from '@/services/api';
 import { useApiAuth } from './useApiAuth';
 import { useToast } from '@/hooks/use-toast';
-import type { CreateTaskRequest, Event, Task, UpdateTaskRequest, User } from '@/types/api';
+import type { CreateEventRequest, CreateTaskRequest, Event, Task, UpdateTaskRequest, UpdateEventRequest, User } from '@/types/api';
 
 // Events API Hooks
 export const useEvents = (course?: string) => {
@@ -22,7 +22,7 @@ export const useCreateEvent = () => {
   const { toast } = useToast();
   
   return useMutation({
-    mutationFn: async (event: Omit<Event, '_id' | 'createdAt' | 'updatedAt'>) => {
+    mutationFn: async (event: CreateEventRequest) => {
       return api.createEvent(event);
     },
     onSuccess: () => {
@@ -50,7 +50,7 @@ export const useUpdateEvent = () => {
   const { toast } = useToast();
   
   return useMutation({
-    mutationFn: async ({ id, event }: { id: string; event: Partial<Event> }) => {
+    mutationFn: async ({ id, event }: { id: string; event: UpdateEventRequest }) => {
       return api.updateEvent(id, event);
     },
     onSuccess: () => {

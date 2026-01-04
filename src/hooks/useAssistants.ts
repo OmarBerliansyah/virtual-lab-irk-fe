@@ -10,6 +10,7 @@ interface Assistant {
   role: string;
   image?: string;
   isActive: boolean;
+  version: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -28,6 +29,7 @@ interface UpdateAssistantData {
   role?: string;
   image?: string;
   isActive?: boolean;
+  version: number;
 }
 
 // Get all assistants
@@ -193,9 +195,10 @@ export const useToggleAssistantActive = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, version }: { id: string; version: number }) => {
       const response = await apiCall(`/api/assistants/${id}/toggle-active`, {
         method: 'PATCH',
+        body: JSON.stringify({ version }), // OCC: Send version for concurrency control
       });
       
       if (!response.ok) {
@@ -206,7 +209,7 @@ export const useToggleAssistantActive = () => {
       const data = await response.json();
       return data.data as Assistant;
     },
-    onSuccess: (data, id) => {
+    onSuccess: (data, { id }) => {
       // Update specific assistant in cache
       queryClient.setQueryData(['assistants', id], data);
       

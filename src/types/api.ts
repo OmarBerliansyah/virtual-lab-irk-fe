@@ -4,6 +4,7 @@ export interface User {
   clerkId: string;
   email: string;
   role: 'USER' | 'ASSISTANT' | 'ADMIN';
+  version: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -31,6 +32,7 @@ export interface Event {
     title: string;
     url: string;
   }>;
+  version: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -45,6 +47,7 @@ export interface Task {
   assignee?: string;
   assistantId?: string;
   tags: string[];
+  version: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -61,7 +64,7 @@ export interface CreateTaskRequest {
   tags?: string[];
 }
 
-export type UpdateTaskRequest = Partial<CreateTaskRequest>;
+export type UpdateTaskRequest = Partial<CreateTaskRequest> & { version: number };
 
 export interface CreateEventRequest {
   title: string;
@@ -77,7 +80,7 @@ export interface CreateEventRequest {
   }>;
 }
 
-export type UpdateEventRequest = Partial<CreateEventRequest>;
+export type UpdateEventRequest = Partial<CreateEventRequest> & { version: number };
 
 // User request types
 export interface UpdateUserRequest {

@@ -35,6 +35,7 @@ interface AssistantData {
   role: string;
   image?: string;
   isActive?: boolean;
+  version?: number;
 }
 
 interface AssistantProfileEditProps {
@@ -119,6 +120,7 @@ const AssistantProfileEdit = ({ assistantData, assistantId, onUpdateSuccess }: A
             name: formData.name,
             role: formData.role,
             image: normalizedImage ? normalizedImage : null,
+            version: targetAssistant.version ?? 0, // OCC: Include version for concurrency control
             ...(isEditingOther ? {
               email: formData.email?.trim() || undefined,
               nim: formData.nim?.trim() || undefined,

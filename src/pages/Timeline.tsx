@@ -43,6 +43,7 @@ interface CourseEvent {
     title: string;
     url: string;
   }>;
+  version?: number;
   backgroundColor?: string;
   borderColor?: string;
 }
@@ -137,6 +138,7 @@ const Timeline = () => {
       description: event.description,
       photoUrl: event.photoUrl,
       linkAttachments: event.linkAttachments,
+      version: event.version,
     }));
     allCalendarItems.push(...eventItems);
   }
@@ -279,11 +281,13 @@ const Timeline = () => {
           description?: string;
           photoUrl?: string;
           linkAttachments?: Array<{ title: string; url: string }>;
+          version: number; // OCC: Required for concurrency control
         } = {
           title: newEvent.title,
           start: newEvent.start,
           course: newEvent.course,
           type: newEvent.type,
+          version: editingEvent.version ?? 0, // OCC: Include version
         };
         
         // Add highlight-specific fields if type is highlight
